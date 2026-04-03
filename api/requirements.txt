@@ -1,0 +1,41 @@
+# Framework API
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.9
+pydantic-settings==2.3.0
+
+# Supabase
+supabase==2.5.0
+pyjwt==2.8.0
+
+# IA Audio - Basic Pitch & Librosa
+basic-pitch==0.3.2
+librosa==0.10.2
+soundfile==0.12.1
+audioread==3.0.1
+
+# IA Musique - music21
+music21==9.1.0
+
+# IA Google - Magenta
+magenta==2.1.4
+tensorflow==2.13.0
+
+# IA Anthropic - Claude
+anthropic==0.29.0
+
+# IA OpenAI - GPT-4o & Whisper
+openai==1.35.0
+
+# Traitement fichiers
+httpx==0.27.0
+aiofiles==23.2.1
+python-magic==0.4.27
+Pillow==10.3.0
+pypdf2==3.0.1
+
+# Utilitaires
+numpy==1.26.4
+scipy==1.13.1
+requests==2.32.3
+python-dotenv==1.0.1

@@ -1,0 +1,1 @@
+# AI Score services initialization
