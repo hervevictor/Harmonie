@@ -10,7 +10,7 @@ class ApiService {
   // En développement physique : 'http://TON_IP_LOCAL:8000'
   static const _baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'http://192.168.178.4:8000', // IP de ton ordi en local
   );
 
   static final _dio = Dio(BaseOptions(

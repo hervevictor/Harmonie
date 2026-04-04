@@ -1,15 +1,26 @@
 import tempfile, os
 from typing import List, Dict, Any
-from basic_pitch.inference import predict, Model
-from basic_pitch import ICASSP_2022_MODEL_PATH
-import numpy as np
+
+try:
+    from basic_pitch.inference import predict, Model
+    from basic_pitch import ICASSP_2022_MODEL_PATH
+    import numpy as np
+    BASIC_PITCH_AVAILABLE = True
+except ImportError:
+    import numpy as np
+    BASIC_PITCH_AVAILABLE = False
+
 
 # Charger le modèle une seule fois au démarrage (lourd à charger)
-_model: Model | None = None
+_model = None
 
-def get_basic_pitch_model() -> Model:
+def get_basic_pitch_model():
     global _model
+    if not BASIC_PITCH_AVAILABLE:
+        return None
     if _model is None:
+        from basic_pitch.inference import Model
+        from basic_pitch import ICASSP_2022_MODEL_PATH
         _model = Model(ICASSP_2022_MODEL_PATH)
     return _model
 
@@ -17,19 +28,15 @@ def get_basic_pitch_model() -> Model:
 async def transcribe_audio_to_notes(file_bytes: bytes, file_extension: str = ".wav") -> Dict[str, Any]:
     """
     Transcrit un fichier audio en séquence de notes musicales.
-
-    Paramètres :
-        file_bytes    : contenu du fichier audio en bytes
-        file_extension: extension du fichier (.mp3, .wav, .flac...)
-
-    Retourne :
-        {
-          "notes_sequence": [{"pitch": int, "start": float, "end": float, "confidence": float}],
-          "midi_data"     : pretty_midi.PrettyMIDI object,
-          "piano_roll"    : np.ndarray (pitch × time),
-          "note_events"   : liste brute des événements
-        }
     """
+    if not BASIC_PITCH_AVAILABLE:
+        return {
+            "notes_sequence": [],
+            "midi_data": None,
+            "note_count": 0,
+            "error_basic_pitch": "Bibliothèque Basic-Pitch non installée"
+        }
+
     with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
@@ -87,6 +94,9 @@ def midi_to_note_name(midi_number: int) -> str:
 async def save_midi_to_bytes(midi_data) -> bytes:
     """Sérialise un objet PrettyMIDI en bytes pour stockage."""
     with tempfile.NamedTemporaryFile(suffix=".mid", delete=False) as tmp:
+    # On vérifie si midi_data est valide
+        if midi_data is None:
+            return b""
         midi_data.write(tmp.name)
         tmp.seek(0)
         return open(tmp.name, "rb").read()

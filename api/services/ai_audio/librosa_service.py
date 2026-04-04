@@ -1,7 +1,11 @@
-import tempfile, os
-import librosa
-import numpy as np
-from typing import Dict, Any
+try:
+    import librosa
+    import numpy as np
+    LIBROSA_AVAILABLE = True
+except ImportError:
+    import numpy as np
+    LIBROSA_AVAILABLE = False
+
 
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 MAJOR_PROFILE = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
@@ -10,14 +14,22 @@ MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.3
 
 async def analyze_audio_features(file_bytes: bytes, file_extension: str = ".wav") -> Dict[str, Any]:
     """
-    Analyse complète des caractéristiques audio :
-    - Tempo (BPM) et beat tracking
-    - Tonalité (clé musicale) avec algorithme de Krumhansl-Schmuckler
-    - Signature rythmique estimée
-    - Durée totale
-    - Énergie RMS
-    - Spectrogramme chroma (pour la détection d'accords)
+    Analyse complète des caractéristiques audio.
     """
+    if not LIBROSA_AVAILABLE:
+        return {
+            "tempo_bpm": 120.0,
+            "detected_key": "C major",
+            "key_confidence": 0.0,
+            "time_signature": "4/4",
+            "duration_seconds": 0.0,
+            "sample_rate": 44100,
+            "beat_count": 0,
+            "energy_mean": 0.0,
+            "chroma_vector": [0.0] * 12,
+            "error_librosa": "Bibliothèque Librosa non installée sur le serveur"
+        }
+
     with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name

@@ -6,22 +6,25 @@ from music21 import (
 from typing import List, Dict, Any, Optional
 import tempfile, os, io
 
-# ── GAMMES SUPPORTÉES ────────────────────────────────────────
+# ── GAMMES SUPPORTÉES (avec protection contre les versions de music21) ──
+def _get_scale_class(name: str):
+    return getattr(m21_scale, name, m21_scale.MajorScale)
+
 SCALE_TYPES = {
-    "major":      m21_scale.MajorScale,
-    "minor":      m21_scale.MinorScale,
-    "harmonic_minor": m21_scale.HarmonicMinorScale,
-    "melodic_minor":  m21_scale.MelodicMinorScale,
-    "pentatonic_major": m21_scale.MajorPentatonicScale,
-    "pentatonic_minor": m21_scale.MinorPentatonicScale,
-    "blues":      m21_scale.BluesScale,
-    "dorian":     m21_scale.DorianScale,
-    "phrygian":   m21_scale.PhrygianScale,
-    "lydian":     m21_scale.LydianScale,
-    "mixolydian": m21_scale.MixolydianScale,
-    "locrian":    m21_scale.LocrianScale,
-    "whole_tone": m21_scale.WholeToneScale,
-    "chromatic":  m21_scale.ChromaticScale,
+    "major":      _get_scale_class("MajorScale"),
+    "minor":      _get_scale_class("MinorScale"),
+    "harmonic_minor": _get_scale_class("HarmonicMinorScale"),
+    "melodic_minor":  _get_scale_class("MelodicMinorScale"),
+    "pentatonic_major": _get_scale_class("MajorPentatonicScale"),
+    "pentatonic_minor": _get_scale_class("MinorPentatonicScale"),
+    "blues":      _get_scale_class("BluesScale"),
+    "dorian":     _get_scale_class("DorianScale"),
+    "phrygian":   _get_scale_class("PhrygianScale"),
+    "lydian":     _get_scale_class("LydianScale"),
+    "mixolydian": _get_scale_class("MixolydianScale"),
+    "locrian":    _get_scale_class("LocrianScale"),
+    "whole_tone": _get_scale_class("WholeToneScale"),
+    "chromatic":  _get_scale_class("ChromaticScale"),
 }
 
 

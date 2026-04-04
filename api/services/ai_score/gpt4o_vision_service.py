@@ -48,15 +48,19 @@ async def read_score_from_image(image_bytes: bytes, mime_type: str = "image/jpeg
     """
     b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
+    is_groq = settings.OPENAI_API_KEY.startswith("gsk_")
+    url = "https://api.groq.com/openai/v1/chat/completions" if is_groq else "https://api.openai.com/v1/chat/completions"
+    model = "llama-3.2-11b-vision-preview" if is_groq else "gpt-4o"
+
     async with httpx.AsyncClient(timeout=45.0) as client:
         response = await client.post(
-            "https://api.openai.com/v1/chat/completions",
+            url,
             headers={
                 "Authorization": f"Bearer {settings.OPENAI_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "gpt-4o",
+                "model": model,
                 "max_tokens": 4000,
                 "temperature": 0.1,     # Faible température pour plus de précision
                 "messages": [
@@ -70,8 +74,7 @@ async def read_score_from_image(image_bytes: bytes, mime_type: str = "image/jpeg
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:{mime_type};base64,{b64_image}",
-                                    "detail": "high"   # Mode haute résolution
+                                    "url": f"data:{mime_type};base64,{b64_image}"
                                 }
                             },
                             {

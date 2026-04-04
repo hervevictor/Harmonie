@@ -404,6 +404,7 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
       // 2. Si indisponible → Claude (vision pour images, contextuel pour audio)
       // 3. Dernier recours → démo statique
       AnalysisResult result;
+      // 1. Appel du backend Python
       try {
         if (_selectedFileType == 'pdf' || _selectedFileType == 'image') {
           result = await ApiService.analysePartition(
@@ -417,18 +418,9 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
             fileType: _selectedFileType,
           );
         }
-      } catch (_) {
-        // Backend indisponible — essaie Claude
-        try {
-          result = await AiService.analyseFile(
-            file: _selectedFile!,
-            instrumentId: _selectedInstrumentId,
-            fileType: _selectedFileType,
-            fileName: _selectedFileName,
-          );
-        } catch (_) {
-          result = AnalysisResult.demo();
-        }
+      } catch (e) {
+        // En cas d'échec du backend, on informe l'utilisateur au lieu de mettre de la fausse donnée
+        throw Exception("Le serveur d'IA est injoignable ($e). Vérifiez qu'il est bien lancé sur votre ordinateur.");
       }
 
       // Sauvegarde de la session

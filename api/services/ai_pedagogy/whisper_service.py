@@ -18,13 +18,17 @@ async def transcribe_audio_answer(
     Retourne :
         {"text": "Do dièse", "confidence": 0.95, "language": "fr"}
     """
+    is_groq = settings.OPENAI_API_KEY.startswith("gsk_")
+    url = "https://api.groq.com/openai/v1/audio/transcriptions" if is_groq else "https://api.openai.com/v1/audio/transcriptions"
+    model = "whisper-large-v3" if is_groq else "whisper-1"
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            "https://api.openai.com/v1/audio/transcriptions",
+            url,
             headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
             files={"file": ("answer.wav", audio_bytes, "audio/wav")},
             data={
-                "model": "whisper-1",
+                "model": model,
                 "language": language,
                 "prompt": prompt or "Noms de notes musicales, accords, termes musicaux en français",
                 "response_format": "verbose_json",

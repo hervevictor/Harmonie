@@ -5,7 +5,7 @@ import os
 from config import settings
 from routers import (
     files, analyses, harmony, scores,
-    instruments, courses, quiz, playbacks, subscriptions
+    instruments, courses, quiz, playbacks, subscriptions, direct
 )
 
 # Créer le répertoire temporaire
@@ -28,7 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers
+# Routers (V1)
 app.include_router(files.router,         prefix="/api/v1", tags=["📁 Fichiers"])
 app.include_router(analyses.router,      prefix="/api/v1", tags=["🔬 Analyses"])
 app.include_router(harmony.router,       prefix="/api/v1", tags=["🎼 Harmonie"])
@@ -38,6 +38,9 @@ app.include_router(courses.router,       prefix="/api/v1", tags=["📚 Cours"])
 app.include_router(quiz.router,          prefix="/api/v1", tags=["❓ Quiz"])
 app.include_router(playbacks.router,     prefix="/api/v1", tags=["▶️ Playback"])
 app.include_router(subscriptions.router, prefix="/api/v1", tags=["💳 Abonnements"])
+
+# Legacy / Direct Routers (pour Flutter)
+app.include_router(direct.router)
 
 @app.get("/health", tags=["Système"])
 async def health_check():
