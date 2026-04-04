@@ -9,13 +9,14 @@ supabase
 pyjwt
 
 # IA Audio - Analyse de partitions & sons
-basic-pitch
-librosa
+# basic-pitch 0.4.0 est recommandé pour Python 3.12+
+basic-pitch>=0.4.0
+librosa>=0.11.0
 soundfile
 audioread
 
 # IA Musique & Harmonie
-music21
+music21>=9.1.0
 
 # IA Anthropic & OpenAI
 anthropic
@@ -29,7 +30,7 @@ Pillow
 pypdf2
 
 # Utilitaires mathématiques
-numpy
-scipy
+numpy>=1.26.0
+scipy>=1.11.0
 requests
 python-dotenv
