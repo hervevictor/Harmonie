@@ -9,8 +9,8 @@ supabase
 pyjwt
 
 # IA Audio - Analyse de partitions & sons
-# basic-pitch 0.4.0 est recommandé pour Python 3.12+
-basic-pitch>=0.4.0
+# basic-pitch est déjà installé manuellement avec --no-deps
+# basic-pitch>=0.4.0
 librosa>=0.11.0
 soundfile
 audioread

@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: harmonie-api
+    runtime: docker
+    rootDir: api
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ACRCLOUD_HOST
+        sync: false
+      - key: ACRCLOUD_ACCESS_KEY
+        sync: false
+      - key: ACRCLOUD_SECRET_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: APP_PORT
+        value: "8000"
+      - key: MAX_FILE_SIZE_MB
+        value: "100"
+      - key: TEMP_DIR
+        value: /tmp/music_api
+    healthCheckPath: /health

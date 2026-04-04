@@ -146,15 +146,11 @@ class _RecordScreenState extends State<RecordScreen>
             file: file, bucket: 'audio', folder: 'recordings');
       } catch (_) {}
 
-      AnalysisResult result;
-      try {
-        result = await ApiService.analyseFile(
-            file: file,
-            instrumentId: _selectedInstrumentId,
-            fileType: 'audio');
-      } catch (_) {
-        result = AnalysisResult.demo();
-      }
+      // Analyse réelle via ton serveur Python
+      final result = await ApiService.analyseFile(
+          file: file,
+          instrumentId: _selectedInstrumentId,
+          fileType: 'audio');
 
       try {
         await SupabaseService.saveSession(

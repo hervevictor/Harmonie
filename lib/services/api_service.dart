@@ -10,7 +10,7 @@ class ApiService {
   // En développement physique : 'http://TON_IP_LOCAL:8000'
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.178.4:8000', // IP de ton ordi en local
+    defaultValue: 'http://192.168.178.229:8000', // Ta nouvelle IP locale
   );
 
   static final _dio = Dio(BaseOptions(
@@ -33,6 +33,7 @@ class ApiService {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         file.path,
+        filename: file.path.split(Platform.pathSeparator).last,
         contentType: MediaType.parse(mimeType),
       ),
       'instrument': instrumentId,
