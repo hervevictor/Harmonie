@@ -16,30 +16,15 @@ class AiMessage {
 }
 
 class AiService {
-  static const _dartDefineKey =
-      String.fromEnvironment('ANTHROPIC_API_KEY', defaultValue: '');
-  static final _apiKey =
-      anthropicApiKey.startsWith('REMPLACE') ? _dartDefineKey : anthropicApiKey;
+  static String get _baseUrl => "${ApiService.baseUrl}/api/v1/harmony/chat";
 
   static const _model = 'claude-3-5-sonnet-20241022';
-
-  static const _baseUrl = 'https://api.anthropic.com/v1/messages';
-
+  static const _apiKey = 'BACKEND_HANDLED'; // On évite de lever l'exception cle_manquante
   static Map<String, String> get _headers => {
         'x-api-key': _apiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       };
-
-  static const _systemPrompt =
-      'Tu es Harmonie, un assistant musical expert et pédagogue. '
-      'Tu aides les musiciens à comprendre les notes, accords, gammes et théorie musicale, '
-      'analyser des morceaux, apprendre à jouer d\'un instrument, lire des partitions '
-      'et progresser dans leur pratique. '
-      'Réponds toujours en français, de façon claire, chaleureuse et pédagogique. '
-      'Utilise des exemples concrets et des analogies musicales. '
-      'Si on te donne des données d\'analyse (notes, accords, tonalité, BPM), '
-      'intègre-les dans tes réponses pour contextualiser tes explications.';
 
   // ── Chat ──────────────────────────────────────────────────────────────────
 
@@ -47,36 +32,28 @@ class AiService {
     required List<AiMessage> messages,
     String? analysisContext,
   }) async {
-    _requireKey();
-
-    final systemContent = (analysisContext != null && analysisContext.isNotEmpty)
-        ? '$_systemPrompt\n\nContexte musical analysé :\n$analysisContext'
-        : _systemPrompt;
-
     final body = jsonEncode({
-      'model': _model,
-      'max_tokens': 1024,
-      'system': systemContent,
       'messages': messages.map((m) => m.toJson()).toList(),
+      'analysisContext': analysisContext,
     });
 
     final response = await http.post(
       Uri.parse(_baseUrl),
-      headers: _headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: body,
     );
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
 
     if (response.statusCode != 200) {
-      final errMsg = (data['error'] as Map?)?['message'] as String?
-          ?? 'Erreur ${response.statusCode}';
-      throw HttpException('${response.statusCode}: $errMsg');
+      final errMsg = data['error'] ?? 'Erreur serveur ${response.statusCode}';
+      throw HttpException(errMsg);
     }
 
-    final content = data['content'] as List?;
-    if (content == null || content.isEmpty) throw Exception('Réponse vide');
-    return content.first['text'] as String;
+    return (data['content'] as String?) ?? 'Désolé, je ne peux pas répondre.';
   }
 
   // ── Analyse fichier via Claude ────────────────────────────────────────────

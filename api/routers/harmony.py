@@ -84,3 +84,32 @@ async def generate_melody(payload: dict, user: dict = Depends(get_current_user))
         num_steps=payload.get("num_steps", 64),
         temperature=payload.get("temperature", 1.0)
     )
+
+
+@router.post("/chat", summary="Chat avec l'assistant musical (IA)")
+async def chat_with_harmony(payload: dict):
+    """
+    **PUBLIC** : Chat avec l'assistant musical.
+    """
+    from services.ai_pedagogy.claude_harmony_service import _openai, is_groq, SYSTEM_PROMPT_HARMONY
+    
+    messages = payload.get("messages", [])
+    context = payload.get("analysisContext", "")
+    
+    system_prompt = SYSTEM_PROMPT_HARMONY
+    if context:
+        system_prompt += f"\n\nContexte musical actuel :\n{context}"
+        
+    full_messages = [{"role": "system", "content": system_prompt}] + messages
+    
+    model = "llama-3.3-70b-versatile" if is_groq else "gpt-4o"
+    
+    try:
+        response = await _openai.chat.completions.create(
+            model=model,
+            messages=full_messages,
+            max_tokens=2000
+        )
+        return {"content": response.choices[0].message.content}
+    except Exception as e:
+        return {"error": str(e), "content": "Désolé, je ne peux pas répondre pour le moment."}

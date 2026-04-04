@@ -1,7 +1,16 @@
 import anthropic, json, re
 from typing import Dict, Any, List, Optional
 from config import settings
+from openai import AsyncOpenAI
 
+# Détecter si on doit utiliser Groq (si la clé commence par gsk_)
+is_groq = settings.OPENAI_API_KEY.startswith("gsk_")
+base_url = "https://api.groq.com/openai/v1" if is_groq else None
+
+# Client OpenAI / Groq
+_openai = AsyncOpenAI(api_key=settings.OPENAI_API_KEY, base_url=base_url)
+
+# Client Anthropic (gardé pour compatibilité)
 _claude = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 # ── CONTEXTES PAR INSTRUMENT ─────────────────────────────────
@@ -72,14 +81,7 @@ async def generate_course_lesson(
     previous_lessons: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
-    Génère un cours complet et structuré.
-
-    Paramètres :
-        instrument        : clé de l'instrument ("guitar", "piano"...)
-        topic             : sujet du cours ("accords de base", "gamme pentatonique"...)
-        level             : "débutant", "intermédiaire", "avancé"
-        analysis_context  : contexte de la chanson analysée (tonalité, accords...)
-        previous_lessons  : sujets des cours précédents (pour éviter les répétitions)
+    Génère un cours complet et structuré via Groq/OpenAI ou Anthropic.
     """
     inst_ctx = INSTRUMENT_CONTEXTS.get(instrument, {"fr": instrument, "specifics": "", "notation": ""})
 
@@ -158,14 +160,31 @@ Retourne ce JSON exact :
   "summary": "résumé du cours en 2-3 phrases"
 }}"""
 
-    message = _claude.messages.create(
-        model="claude-3-5-sonnet-latest",
-        max_tokens=4000,
-        system=SYSTEM_PROMPT_COURSES,
-        messages=[{"role": "user", "content": prompt}]
-    )
+    content = ""
+    try:
+        model = "llama-3.3-70b-versatile" if is_groq else "gpt-4o"
+        response = await _openai.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT_COURSES},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        content = response.choices[0].message.content
+    except Exception:
+        try:
+            message = _claude.messages.create(
+                model="claude-3-5-sonnet-latest",
+                max_tokens=4000,
+                system=SYSTEM_PROMPT_COURSES,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            content = message.content[0].text.strip()
+        except Exception as e:
+            return {"error": f"IA inaccessible : {str(e)}", "title": topic}
 
-    content = message.content[0].text.strip()
+    content = content.strip()
     content = re.sub(r'^```(?:json)?\s*', '', content)
     content = re.sub(r'\s*```$', '', content)
 

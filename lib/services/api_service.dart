@@ -8,13 +8,13 @@ class ApiService {
   // ⚠️ Remplace par ton URL backend en production
   // En développement local : 'http://10.0.2.2:8000' (Android émulateur)
   // En développement physique : 'http://TON_IP_LOCAL:8000'
-  static const _baseUrl = String.fromEnvironment(
+  static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://192.168.178.4:8000', // IP de ton ordi en local
   );
 
   static final _dio = Dio(BaseOptions(
-    baseUrl: _baseUrl,
+    baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 120), // analyse peut prendre du temps
     headers: {'Accept': 'application/json'},
