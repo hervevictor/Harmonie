@@ -42,6 +42,15 @@ app.include_router(subscriptions.router, prefix="/api/v1", tags=["💳 Abonnemen
 # Legacy / Direct Routers (pour Flutter)
 app.include_router(direct.router)
 
+@app.get("/", tags=["Système"])
+async def root():
+    return {
+        "message": "Bienvenue sur l'API Music AI (Harmonie)",
+        "docs": "/docs",
+        "health": "/health",
+        "status": "online"
+    }
+
 @app.get("/health", tags=["Système"])
 async def health_check():
     return {"status": "ok", "version": "1.0.0", "env": settings.APP_ENV}
