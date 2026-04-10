@@ -10,13 +10,13 @@ class ApiService {
   // En développement physique : 'http://TON_IP_LOCAL:8000'
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.178.229:8000', // Ta nouvelle IP locale
+    defaultValue: 'https://harmonie-2vla.onrender.com', // Render Cloud
   );
 
   static final _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 120), // analyse peut prendre du temps
+    connectTimeout: const Duration(seconds: 90),  // cold start Render peut prendre ~60s
+    receiveTimeout: const Duration(seconds: 180), // analyse peut prendre du temps
     headers: {'Accept': 'application/json'},
   ));
 
