@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/ai_service.dart';
+import '../widgets/harmonie_app_bar.dart';
 
 class ChatScreen extends StatefulWidget {
   /// Contexte d'analyse pré-rempli (depuis l'écran résultat)
@@ -129,65 +130,22 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HarmonieColors.bg,
-      appBar: AppBar(
-        backgroundColor: HarmonieColors.bg,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [HarmonieColors.gold, HarmonieColors.accent],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text('♪', style: TextStyle(fontSize: 16)),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Harmonie IA',
-                  style: TextStyle(
-                    fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-                    fontSize: 16,
-                    color: HarmonieColors.cream,
-                  ),
-                ),
-                const Text(
-                  'Assistant musical',
-                  style: TextStyle(
-                    color: HarmonieColors.muted,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      appBar: HarmonieAppBar(
+        title: 'Harmonie IA',
         actions: [
           if (_messages.length > 1)
             IconButton(
-              icon: const Icon(Icons.refresh_rounded,
-                  color: HarmonieColors.muted, size: 20),
+              icon: const Icon(Icons.refresh_rounded, color: HarmonieColors.muted, size: 20),
               onPressed: () => setState(() {
                 _messages.clear();
                 _messages.add(AiMessage(
                   role: 'assistant',
-                  content:
-                      'Nouvelle conversation démarrée. Comment puis-je t\'aider ? 🎵',
+                  content: 'Nouvelle conversation démarrée. Comment puis-je t\'aider ? 🎵',
                 ));
               }),
               tooltip: 'Nouvelle conversation',
             ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(

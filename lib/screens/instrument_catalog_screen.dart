@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../models/instrument.dart';
 import '../widgets/instrument_card.dart';
+import '../widgets/harmonie_app_bar.dart';
 
 class InstrumentCatalogScreen extends StatefulWidget {
   const InstrumentCatalogScreen({super.key});
@@ -23,48 +24,19 @@ class _InstrumentCatalogScreenState extends State<InstrumentCatalogScreen> {
 
     return Scaffold(
       backgroundColor: HarmonieColors.bg,
-      appBar: AppBar(
-        backgroundColor: HarmonieColors.bg,
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: HarmonieColors.cream,
-            size: 20,
-          ),
-        ),
-        title: RichText(
-          text:  TextSpan(
-            style: TextStyle(
-              fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-              fontSize: 20,
-              color: HarmonieColors.cream,
-            ),
-            children: [
-              TextSpan(text: 'Catalogue des '),
-              TextSpan(
-                text: 'instruments',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: HarmonieColors.gold,
-                ),
-              ),
-            ],
-          ),
-        ),
+      appBar: HarmonieAppBar(
+        title: 'Instruments',
         actions: [
           if (_selected.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: HarmonieColors.gold.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: HarmonieColors.gold.withOpacity(0.4)),
+                    border: Border.all(color: HarmonieColors.gold.withOpacity(0.4)),
                   ),
                   child: Text(
                     '${_selected.length} sélectionné${_selected.length > 1 ? 's' : ''}',

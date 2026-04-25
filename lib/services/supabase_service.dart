@@ -87,11 +87,12 @@ class SupabaseService {
       'instrument_id': instrumentId,
       'file_url': fileUrl,
       'file_type': fileType,
-      'key_signature': analysisResult['key'],
-      'bpm': analysisResult['bpm'],
-      'chords': analysisResult['chords'],
+      'key_signature': analysisResult['audio_features']?['key_signature'] ?? analysisResult['harmony']?['key_signature'],
+      'bpm': analysisResult['audio_features']?['bpm'],
+      'chords': analysisResult['harmony']?['chord_progression'],
       'notes': analysisResult['notes'],
-      'audio_result_url': analysisResult['audioUrl'],
+      'audio_result_url': analysisResult['audio_result_url'], // Si présent
+      'job_id': analysisResult['job_id'],
       'created_at': DateTime.now().toIso8601String(),
     };
 

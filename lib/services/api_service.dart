@@ -3,52 +3,61 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import '../models/music_result.dart';
 
 class ApiService {
-  // ⚠️ Remplace par ton URL backend en production
-  // En développement local : 'http://10.0.2.2:8000' (Android émulateur)
-  // En développement physique : 'http://TON_IP_LOCAL:8000'
+  // 💡 Pour tester l'API locale sur Android Emulateur, utiliser http://10.0.2.2:8000
+  // Pour iOS ou PC, utiliser http://localhost:8000
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://harmonie-2vla.onrender.com', // Render Cloud
+    defaultValue: 'http://10.0.0.30:8000', 
   );
 
   static final _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 90),  // cold start Render peut prendre ~60s
-    receiveTimeout: const Duration(seconds: 180), // analyse peut prendre du temps
+    connectTimeout: const Duration(seconds: 120),
+    receiveTimeout: const Duration(seconds: 300), // L'analyse peut être longue (Whisper, IA)
     headers: {'Accept': 'application/json'},
-  ));
+  ))..interceptors.add(LogInterceptor(
+      requestHeader: true,
+      requestBody: true,
+      responseHeader: true,
+      responseBody: true,
+    ));
 
-  // ─── ANALYSE AUDIO/VIDÉO ─────────────────────────────────────────────────
-
-  /// Envoie un fichier audio/vidéo pour analyse
-  /// Retourne notes, accords, BPM, tonalité, URL audio généré
-  static Future<AnalysisResult> analyseFile({
+  /// POINT D'ENTRÉE UNIVERSEL
+  /// Envoie n'importe quel fichier (Audio, Vidéo, Partition)
+  /// Le serveur détecte automatiquement le pipeline à utiliser.
+  static Future<MusicResult> analyze({
     required File file,
-    required String instrumentId,
-    String fileType = 'audio',
+    String? targetKey,
+    String? openaiApiKey,
   }) async {
-    final mimeType = lookupMimeType(file.path) ?? 'audio/mpeg';
+    final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+    
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         file.path,
         filename: file.path.split(Platform.pathSeparator).last,
         contentType: MediaType.parse(mimeType),
       ),
-      'instrument': instrumentId,
-      'file_type': fileType,
+      if (targetKey != null) 'target_key': targetKey,
+      if (openaiApiKey != null) 'openai_api_key': openaiApiKey,
     });
 
-    final response = await _dio.post('/analyse', data: formData);
-    return AnalysisResult.fromJson(response.data);
+    final response = await _dio.post('/api/analyze', data: formData);
+    
+    if (response.statusCode == 200) {
+      return MusicResult.fromJson(response.data);
+    } else {
+      throw Exception('Erreur API: ${response.statusMessage}');
+    }
   }
 
-  /// Envoie des bytes audio (depuis enregistrement direct)
-  static Future<AnalysisResult> analyseBytes({
+  /// ANALYSE MICROPHONE (Live Recording)
+  static Future<MusicResult> analyzeMic({
     required List<int> audioBytes,
-    required String instrumentId,
-    String filename = 'recording.wav',
+    String filename = 'live_recording.wav',
   }) async {
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(
@@ -56,117 +65,25 @@ class ApiService {
         filename: filename,
         contentType: MediaType('audio', 'wav'),
       ),
-      'instrument': instrumentId,
-      'file_type': 'audio',
     });
 
-    final response = await _dio.post('/analyse', data: formData);
-    return AnalysisResult.fromJson(response.data);
+    final response = await _dio.post('/api/analyze/mic', data: formData);
+    return MusicResult.fromJson(response.data);
   }
 
-  // ─── ANALYSE PARTITION (PDF / Image) ─────────────────────────────────────
-
-  /// Envoie une partition PDF ou image pour lecture par l'IA
-  static Future<AnalysisResult> analysePartition({
-    required File file,
-    required String instrumentId,
-  }) async {
-    final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
-    final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        file.path,
-        contentType: MediaType.parse(mimeType),
-      ),
-      'instrument': instrumentId,
-    });
-
-    final response = await _dio.post('/partition', data: formData);
-    return AnalysisResult.fromJson(response.data);
+  /// RÉCUPÉRER L'ÉTAT D'UN JOB
+  static Future<MusicResult> getJobStatus(String jobId) async {
+    final response = await _dio.get('/api/jobs/$jobId');
+    return MusicResult.fromJson(response.data);
   }
 
-  // ─── SYNTHÈSE AUDIO ───────────────────────────────────────────────────────
-
-  /// Génère un fichier audio à partir de notes MIDI + instrument
-  static Future<String> synthesize({
-    required List<String> notes,
-    required String instrumentId,
-    int bpm = 120,
-  }) async {
-    final response = await _dio.post('/synthesize', data: {
-      'notes': notes,
-      'instrument': instrumentId,
-      'bpm': bpm,
-    });
-    return response.data['audio_url'] as String;
-  }
-
-  // ─── SANTÉ DU BACKEND ─────────────────────────────────────────────────────
-
-  static Future<bool> isBackendOnline() async {
+  /// VÉRIFICATION SANTÉ
+  static Future<bool> isOnline() async {
     try {
-      final response = await _dio.get('/health');
+      final response = await _dio.get('/api/health');
       return response.statusCode == 200;
     } catch (_) {
       return false;
     }
   }
 }
-
-// ─── Modèle de résultat d'analyse ────────────────────────────────────────────
-
-class AnalysisResult {
-  final String key;
-  final int bpm;
-  final List<String> notes;
-  final List<String> chords;
-  final String? audioUrl;
-  final String? midiUrl;
-  final String? partitionUrl; // URL image/PDF de la partition générée
-  final String? error;
-
-  const AnalysisResult({
-    required this.key,
-    required this.bpm,
-    required this.notes,
-    required this.chords,
-    this.audioUrl,
-    this.midiUrl,
-    this.partitionUrl,
-    this.error,
-  });
-
-  bool get hasError => error != null;
-
-  factory AnalysisResult.fromJson(Map<String, dynamic> json) {
-    return AnalysisResult(
-      key: json['key'] as String? ?? 'C',
-      bpm: json['bpm'] as int? ?? 120,
-      notes: List<String>.from(json['notes'] as List? ?? []),
-      chords: List<String>.from(json['chords'] as List? ?? []),
-      audioUrl: json['audio_url'] as String?,
-      midiUrl: json['midi_url'] as String?,
-      partitionUrl: json['partition_url'] as String?,
-      error: json['error'] as String?,
-    );
-  }
-
-  factory AnalysisResult.demo() {
-    return const AnalysisResult(
-      key: 'Am',
-      bpm: 120,
-      notes: ['A3', 'C4', 'E4', 'G4', 'A4', 'B4', 'C5', 'E5'],
-      chords: ['Am', 'F', 'C', 'G', 'Am', 'E', 'Am'],
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'key': key,
-    'bpm': bpm,
-    'notes': notes,
-    'chords': chords,
-    'audio_url': audioUrl,
-    'midi_url': midiUrl,
-    'partition_url': partitionUrl,
-  };
-}
-

@@ -48,23 +48,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SliverAppBar(
             backgroundColor: HarmonieColors.bg,
             floating: true,
-            toolbarHeight: 60,
+            pinned: true,
             automaticallyImplyLeading: false,
-            title: Text(
-              'Profil',
-              style: TextStyle(
-                fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-                fontSize: 22,
-                color: HarmonieColors.cream,
-              ),
+            toolbarHeight: 64,
+            elevation: 0,
+            centerTitle: false,
+            title: Row(
+              children: [
+                Image.asset(
+                  'assets/images/logo.png',
+                  height: 24,
+                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.music_note_rounded, color: HarmonieColors.gold),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Harmonie',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: GoogleFonts.playfairDisplay().fontFamily,
+                      fontSize: 18,
+                      color: HarmonieColors.cream,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'PROFIL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    color: HarmonieColors.gold.withOpacity(0.7),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
             actions: [
               if (isLoggedIn)
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded,
-                      color: HarmonieColors.muted, size: 20),
-                  onPressed: _signOut,
-                  tooltip: 'Déconnexion',
+                Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    icon: const Icon(Icons.logout_rounded,
+                        color: HarmonieColors.muted, size: 20),
+                    onPressed: _signOut,
+                    tooltip: 'Déconnexion',
+                  ),
                 ),
             ],
           ),

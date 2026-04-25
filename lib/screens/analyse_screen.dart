@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import '../theme/app_theme.dart';
+import '../models/music_result.dart';
 import '../models/instrument.dart';
 import '../widgets/instrument_card.dart';
 import '../services/ai_service.dart';
@@ -12,6 +13,7 @@ import '../services/api_service.dart';
 import '../services/audio_service.dart';
 import '../services/media_service.dart';
 import '../services/supabase_service.dart';
+import '../widgets/harmonie_app_bar.dart';
 
 class AnalyseScreen extends StatefulWidget {
   const AnalyseScreen({super.key});
@@ -38,33 +40,7 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HarmonieColors.bg,
-      appBar: AppBar(
-        backgroundColor: HarmonieColors.bg,
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: HarmonieColors.cream, size: 20),
-        ),
-        title: RichText(
-          text: TextSpan(
-            style: TextStyle(
-              fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-              fontSize: 20,
-              color: HarmonieColors.cream,
-            ),
-            children: const [
-              TextSpan(text: 'Analyser un '),
-              TextSpan(
-                text: 'chant',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: HarmonieColors.gold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      appBar: const HarmonieAppBar(title: 'Analyse Musicale'),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20),
@@ -248,7 +224,7 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
             _StepLabel(number: '3', label: 'Instrument de sortie'),
             const SizedBox(height: 12),
             SizedBox(
-              height: 150,
+              height: 160,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -259,10 +235,31 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
                   return InstrumentCard(
                     instrument: instr,
                     isSelected: _selectedInstrumentId == instr.id,
-                    onTap: () =>
-                        setState(() => _selectedInstrumentId = instr.id),
+                    onTap: () {
+                      debugPrint('🎵 Instrument sélectionné: ${instr.name} (${instr.id})');
+                      setState(() => _selectedInstrumentId = instr.id);
+                    },
                   );
                 },
+              ),
+            ),
+
+            // Indicateur de l'instrument sélectionné
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: HarmonieColors.gold, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Instrument: ${InstrumentCatalog.findById(_selectedInstrumentId)?.name ?? _selectedInstrumentId}',
+                    style: TextStyle(
+                      color: HarmonieColors.gold.withOpacity(0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -400,47 +397,36 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
         );
       } catch (_) {}
 
-      // 1. Essaie le backend Python
-      // 2. Si indisponible → Claude (vision pour images, contextuel pour audio)
-      // 3. Dernier recours → démo statique
-      AnalysisResult result;
-      // 1. Appel du backend Python
+      // 1. Appel du backend Python Unifié
+      MusicResult result;
       try {
-        if (_selectedFileType == 'pdf' || _selectedFileType == 'image') {
-          result = await ApiService.analysePartition(
-            file: _selectedFile!,
-            instrumentId: _selectedInstrumentId,
-          );
-        } else {
-          result = await ApiService.analyseFile(
-            file: _selectedFile!,
-            instrumentId: _selectedInstrumentId,
-            fileType: _selectedFileType,
-          );
-        }
+        result = await ApiService.analyze(
+          file: _selectedFile!,
+          targetKey: _selectedInstrumentId,
+        );
       } catch (e) {
-        // En cas d'échec du backend, on informe l'utilisateur au lieu de mettre de la fausse donnée
-        throw Exception("Le serveur d'IA est injoignable ($e). Vérifiez qu'il est bien lancé sur votre ordinateur.");
+        throw Exception("Serveur injoignable sur ${ApiService.baseUrl} (Détail: $e).");
       }
 
-      // Sauvegarde de la session
+      // Sauvegarde de la session (optionnelle)
       try {
         await SupabaseService.saveSession(
           title: _selectedFileName ?? 'Analyse',
           instrumentId: _selectedInstrumentId,
           fileUrl: fileUrl,
           fileType: _selectedFileType,
-          analysisResult: result.toJson(),
+          analysisResult: {}, // À adapter en fonction de votre schéma Supabase
         );
       } catch (_) {}
 
       if (mounted) {
         setState(() => _isAnalysing = false);
         context.push('/analyser/resultat', extra: {
-          ...result.toJson(),
+          'result': result,
           'fileName': _selectedFileName,
           'instrumentId': _selectedInstrumentId,
           'localFilePath': _selectedFile?.path,
+          'fileType': _selectedFileType,
         });
       }
     } catch (e) {

@@ -1,6 +1,7 @@
 // lib/router.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:harmonie/models/music_result.dart';
 
 import 'screens/main_shell.dart';
 import 'screens/home_screen.dart';
@@ -14,6 +15,9 @@ import 'screens/partition_screen.dart';
 import 'screens/record_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
+import 'screens/analysis/harmony_detail_screen.dart';
+import 'screens/analysis/melody_detail_screen.dart';
+import 'screens/analysis/partition_detail_screen.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
@@ -22,7 +26,7 @@ final appRouter = GoRouter(
   navigatorKey: _rootKey,
   initialLocation: '/home',
   routes: [
-    // ── Onglets principaux (bottom nav) ──────────────────────────────────────
+    // ── Shell principal avec Bottom Navigation Bar ───────────────────────────
     ShellRoute(
       navigatorKey: _shellKey,
       builder: (context, state, child) => MainShell(child: child),
@@ -30,6 +34,69 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/home',
           pageBuilder: (c, s) => _fade(const HomeScreen()),
+        ),
+        GoRoute(
+          path: '/analyser',
+          pageBuilder: (c, s) => _fade(const AnalyseScreen()),
+          routes: [
+            GoRoute(
+              path: 'resultat',
+              pageBuilder: (c, s) {
+                final extra = s.extra as Map<String, dynamic>? ?? {};
+                return _fade(AnalyseResultScreen(data: extra));
+              },
+              routes: [
+                GoRoute(
+                  path: 'harmonie',
+                  pageBuilder: (c, s) {
+                    final extra = s.extra as Map<String, dynamic>;
+                    return _fade(HarmonyDetailScreen(
+                      harmony: extra['harmony'] as HarmonyResult,
+                      audioPath: extra['audioPath'] as String?,
+                    ));
+                  },
+                ),
+                GoRoute(
+                  path: 'melodie',
+                  pageBuilder: (c, s) {
+                    final extra = s.extra as Map<String, dynamic>;
+                    return _fade(MelodyDetailScreen(
+                      notes: extra['notes'] as List<Note>,
+                      useFrench: extra['useFrench'] as bool,
+                      audioPath: extra['audioPath'] as String?,
+                    ));
+                  },
+                ),
+                GoRoute(
+                  path: 'partition',
+                  pageBuilder: (c, s) {
+                    final extra = s.extra as Map<String, dynamic>;
+                    return _fade(PartitionDetailScreen(
+                      partitionUrl: extra['partitionUrl'] as String?,
+                      svgContent: extra['svgContent'] as String?,
+                    ));
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/enregistrer',
+          pageBuilder: (c, s) => _fade(const RecordScreen()),
+        ),
+        GoRoute(
+          path: '/apprendre',
+          pageBuilder: (c, s) => _fade(const LearnScreen()),
+        ),
+        GoRoute(
+          path: '/profil',
+          pageBuilder: (c, s) => _fade(const ProfileScreen()),
+        ),
+        // Autres pages métier qui doivent garder la navigation
+        GoRoute(
+          path: '/partition',
+          pageBuilder: (c, s) => _fade(const PartitionScreen()),
         ),
         GoRoute(
           path: '/chat',
@@ -41,59 +108,22 @@ final appRouter = GoRouter(
           },
         ),
         GoRoute(
-          path: '/apprendre',
-          pageBuilder: (c, s) => _fade(const LearnScreen()),
+          path: '/assistant',
+          pageBuilder: (c, s) {
+            final extra = s.extra as Map<String, dynamic>?;
+            final ctx = extra?['analysisContext'] as String?;
+            final initial = extra?['initialMessage'] as String?;
+            return _fade(ChatScreen(analysisContext: ctx, initialMessage: initial));
+          },
         ),
         GoRoute(
-          path: '/profil',
-          pageBuilder: (c, s) => _fade(const ProfileScreen()),
+          path: '/instruments',
+          pageBuilder: (c, s) => _fade(const InstrumentCatalogScreen()),
         ),
       ],
     ),
 
-    // ── Écrans plein-page (sans bottom nav) ──────────────────────────────────
-    GoRoute(
-      path: '/instruments',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) => _slideUp(const InstrumentCatalogScreen()),
-    ),
-    GoRoute(
-      path: '/analyser',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) => _slideUp(const AnalyseScreen()),
-    ),
-    GoRoute(
-      path: '/analyser/resultat',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) {
-        final extra = s.extra as Map<String, dynamic>? ?? {};
-        return _slideUp(AnalyseResultScreen(data: extra));
-      },
-    ),
-    GoRoute(
-      path: '/partition',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) => _slideUp(const PartitionScreen()),
-    ),
-    GoRoute(
-      path: '/enregistrer',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) => _slideUp(const RecordScreen()),
-    ),
-
-    // ── Chat contextuel (depuis résultats / Apprendre) — sans bottom nav ──────
-    GoRoute(
-      path: '/assistant',
-      parentNavigatorKey: _rootKey,
-      pageBuilder: (c, s) {
-        final extra = s.extra as Map<String, dynamic>?;
-        final ctx = extra?['analysisContext'] as String?;
-        final initial = extra?['initialMessage'] as String?;
-        return _slideUp(ChatScreen(analysisContext: ctx, initialMessage: initial));
-      },
-    ),
-
-    // ── Auth ──────────────────────────────────────────────────────────────────
+    // ── Auth (Plein écran sans navigation) ───────────────────────────────────
     GoRoute(
       path: '/login',
       parentNavigatorKey: _rootKey,

@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../services/supabase_service.dart';
 import '../models/instrument.dart';
 import '../widgets/instrument_card.dart';
+import '../widgets/harmonie_app_bar.dart';
 
 // ─── Machine d'états de l'enregistrement ─────────────────────────────────────
 enum _Phase { idle, recording, paused, reviewing }
@@ -147,10 +148,9 @@ class _RecordScreenState extends State<RecordScreen>
       } catch (_) {}
 
       // Analyse réelle via ton serveur Python
-      final result = await ApiService.analyseFile(
+      final result = await ApiService.analyze(
           file: file,
-          instrumentId: _selectedInstrumentId,
-          fileType: 'audio');
+          targetKey: _selectedInstrumentId);
 
       try {
         await SupabaseService.saveSession(
@@ -165,7 +165,7 @@ class _RecordScreenState extends State<RecordScreen>
       if (mounted) {
         setState(() => _isAnalysing = false);
         context.push('/analyser/resultat', extra: {
-          ...result.toJson(),
+          'result': result,
           'fileName': 'Enregistrement ${_formatDate()}',
           'instrumentId': _selectedInstrumentId,
           'localFilePath': _recordingPath,
@@ -185,22 +185,7 @@ class _RecordScreenState extends State<RecordScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HarmonieColors.bg,
-      appBar: AppBar(
-        backgroundColor: HarmonieColors.bg,
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: HarmonieColors.cream, size: 20),
-        ),
-        title: Text(
-          'Enregistrement studio',
-          style: TextStyle(
-            fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-            fontSize: 20,
-            color: HarmonieColors.cream,
-          ),
-        ),
-      ),
+      appBar: HarmonieAppBar(title: 'Enregistrement studio'),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20),

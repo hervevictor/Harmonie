@@ -1,36 +1,13 @@
-# Framework API
 fastapi
-uvicorn[standard]
+uvicorn
 python-multipart
-pydantic-settings
-
-# Supabase
-supabase
-pyjwt
-
-# IA Audio - Analyse de partitions & sons
-# basic-pitch est déjà installé manuellement avec --no-deps
-# basic-pitch>=0.4.0
-librosa>=0.11.0
-soundfile
-audioread
-
-# IA Musique & Harmonie
-music21>=9.1.0
-
-# IA Anthropic & OpenAI
-anthropic
-openai
-
-# Traitement fichiers & PDF
+librosa
+basic-pitch
+onnxruntime
+music21
+openai-whisper
+opencv-python
+numpy
 httpx
-aiofiles
-python-magic
-Pillow
-pypdf2
-
-# Utilitaires mathématiques
-numpy>=1.26.0
-scipy>=1.11.0
-requests
-python-dotenv
+python-magic-bin; sys_platform == 'win32'
+python-magic; sys_platform != 'win32'

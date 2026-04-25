@@ -49,6 +49,47 @@ class NoteConverter {
   static List<String> convertChords(List<String> chords, bool useFrench) =>
       chords.map((c) => convertChord(c, useFrench)).toList();
 
+  /// Retourne le degré harmonique d'un accord dans une tonalité (ex: C dans G -> IV)
+  static String getChordDegree(String chord, String key) {
+    if (key.isEmpty) return '';
+    
+    // Simplification : on ne garde que la note de base
+    final chordMatch = RegExp(r'^([A-G][#b]?)').firstMatch(chord);
+    final keyMatch = RegExp(r'^([A-G][#b]?)').firstMatch(key);
+    
+    if (chordMatch == null || keyMatch == null) return '';
+    
+    final chordBase = chordMatch.group(1)!;
+    final keyBase = keyMatch.group(1)!;
+    
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
+    // Gérer les bémols
+    int getIndex(String n) {
+      if (n == 'Db') return 1;
+      if (n == 'Eb') return 3;
+      if (n == 'Gb') return 6;
+      if (n == 'Ab') return 8;
+      if (n == 'Bb') return 10;
+      return notes.indexOf(n);
+    }
+    
+    final chordIdx = getIndex(chordBase);
+    final keyIdx = getIndex(keyBase);
+    
+    if (chordIdx == -1 || keyIdx == -1) return '';
+    
+    final interval = (chordIdx - keyIdx + 12) % 12;
+    
+    const degrees = {
+      0: 'I',   1: 'bII', 2: 'II',  3: 'bIII',
+      4: 'III', 5: 'IV',  6: '#IV', 7: 'V',
+      8: 'bVI', 9: 'VI',  10: 'bVII', 11: 'VII'
+    };
+    
+    return degrees[interval] ?? '';
+  }
+
   /// Retourne les exemples de notes selon la notation choisie.
   static String get exampleFr => 'Do · Ré · Mi · Fa · Sol · La · Si';
   static String get exampleEn => 'C · D · E · F · G · A · B';

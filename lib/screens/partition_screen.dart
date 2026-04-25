@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/instrument.dart';
+import '../models/music_result.dart';
 import '../widgets/instrument_card.dart';
 import '../services/media_service.dart';
 import '../services/api_service.dart';
 import '../services/supabase_service.dart';
+import '../widgets/harmonie_app_bar.dart';
 
 class PartitionScreen extends StatefulWidget {
   const PartitionScreen({super.key});
@@ -60,14 +62,14 @@ class _PartitionScreenState extends State<PartitionScreen> {
         );
       } catch (_) {}
 
-      AnalysisResult result;
+      MusicResult result;
       try {
-        result = await ApiService.analysePartition(
+        result = await ApiService.analyze(
           file: _selectedFile!,
-          instrumentId: _selectedInstrumentId,
+          targetKey: _selectedInstrumentId,
         );
       } catch (_) {
-        result = AnalysisResult.demo();
+        result = MusicResult.demo();
       }
 
       try {
@@ -102,22 +104,7 @@ class _PartitionScreenState extends State<PartitionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HarmonieColors.bg,
-      appBar: AppBar(
-        backgroundColor: HarmonieColors.bg,
-        leading: GestureDetector(
-          onTap: () => context.pop(),
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: HarmonieColors.cream, size: 20),
-        ),
-        title: Text(
-          'Lire une partition',
-          style: TextStyle(
-            fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-            fontSize: 20,
-            color: HarmonieColors.cream,
-          ),
-        ),
-      ),
+      appBar: HarmonieAppBar(title: 'Lire une partition'),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(20),

@@ -1,1 +1,1 @@
-# Core module initialization
+# Module core

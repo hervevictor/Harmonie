@@ -1,56 +1,51 @@
+"""
+Music Analysis API — Application principale
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+import logging
 import os
-from config import settings
-from routers import (
-    files, analyses, harmony, scores,
-    instruments, courses, quiz, playbacks, subscriptions, direct
-)
+import sys
 
-# Créer le répertoire temporaire
-os.makedirs(settings.TEMP_DIR, exist_ok=True)
+# Ajouter le dossier actuel au path pour les imports relatifs
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from fastapi.staticfiles import StaticFiles
+
+# S'assurer que le dossier des exports existe
+os.makedirs("exports", exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+)
 
 app = FastAPI(
-    title="Music AI API",
-    description="API d'analyse musicale alimentée par l'IA",
+    title="Harmonie Core API",
+    description="Cœur du système d'analyse musicale multi-modal.",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],      # Restreindre en production : ["https://yourapp.com"]
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routers (V1)
-app.include_router(files.router,         prefix="/api/v1", tags=["📁 Fichiers"])
-app.include_router(analyses.router,      prefix="/api/v1", tags=["🔬 Analyses"])
-app.include_router(harmony.router,       prefix="/api/v1", tags=["🎼 Harmonie"])
-app.include_router(scores.router,        prefix="/api/v1", tags=["📄 Partitions"])
-app.include_router(instruments.router,   prefix="/api/v1", tags=["🎸 Instruments"])
-app.include_router(courses.router,       prefix="/api/v1", tags=["📚 Cours"])
-app.include_router(quiz.router,          prefix="/api/v1", tags=["❓ Quiz"])
-app.include_router(playbacks.router,     prefix="/api/v1", tags=["▶️ Playback"])
-app.include_router(subscriptions.router, prefix="/api/v1", tags=["💳 Abonnements"])
+from routers.analyze_router import router
+from routers.instruments import router as instruments_router
+app.include_router(router)
+app.include_router(instruments_router)
 
-# Legacy / Direct Routers (pour Flutter)
-app.include_router(direct.router)
+# Servir les fichiers générés (partitions, etc.)
+app.mount("/exports", StaticFiles(directory="exports"), name="exports")
 
-@app.get("/", tags=["Système"])
+@app.get("/")
 async def root():
     return {
-        "message": "Bienvenue sur l'API Music AI (Harmonie)",
-        "docs": "/docs",
-        "health": "/health",
-        "status": "online"
+        "name": "Harmonie Core API",
+        "status": "online",
+        "endpoints": ["/api/analyze", "/api/health", "/api/jobs/{id}"]
     }
-
-@app.get("/health", tags=["Système"])
-async def health_check():
-    return {"status": "ok", "version": "1.0.0", "env": settings.APP_ENV}

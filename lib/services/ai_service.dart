@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import '../config/secrets.dart';
+import '../models/music_result.dart';
 import 'api_service.dart';
 
 class AiMessage {
@@ -58,7 +59,7 @@ class AiService {
 
   // ── Analyse fichier via Claude ────────────────────────────────────────────
 
-  static Future<AnalysisResult> analyseFile({
+  static Future<MusicResult> analyseFile({
     required File file,
     required String instrumentId,
     required String fileType,
@@ -72,7 +73,7 @@ class AiService {
     return _analyseAudioContext(name, instrumentId, fileType);
   }
 
-  static Future<AnalysisResult> _analyseImageVision(
+  static Future<MusicResult> _analyseImageVision(
       File file, String instrumentId, String fileName) async {
     final bytes = await file.readAsBytes();
     final b64 = base64Encode(bytes);
@@ -110,7 +111,7 @@ class AiService {
     return _parseResponse(response);
   }
 
-  static Future<AnalysisResult> _analyseAudioContext(
+  static Future<MusicResult> _analyseAudioContext(
       String fileName, String instrumentId, String fileType) async {
     final body = jsonEncode({
       'model': _model,
@@ -136,19 +137,19 @@ class AiService {
     return _parseResponse(response);
   }
 
-  static AnalysisResult _parseResponse(http.Response response) {
+  static MusicResult _parseResponse(http.Response response) {
     try {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode != 200) return AnalysisResult.demo();
+      if (response.statusCode != 200) return MusicResult.demo();
       final text = (data['content'] as List).first['text'] as String;
       final cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
       final match = RegExp(r'\{[\s\S]*\}').firstMatch(cleaned);
       if (match != null) {
         final map = jsonDecode(match.group(0)!) as Map<String, dynamic>;
-        return AnalysisResult.fromJson(map);
+        return MusicResult.fromJson(map);
       }
     } catch (_) {}
-    return AnalysisResult.demo();
+    return MusicResult.demo();
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -166,12 +167,22 @@ class AiService {
     required int bpm,
     required List<String> chords,
     required List<String> notes,
+    MusicResult? rawResult,
   }) {
+    final harmony = rawResult?.harmony;
+    final audio = rawResult?.audioFeatures;
+    
     return 'Fichier : $fileName\n'
         'Instrument cible : $instrumentId\n'
-        'Tonalité : $key\n'
-        'BPM : $bpm\n'
-        'Progression d\'accords : ${chords.join(' → ')}\n'
-        'Séquence de notes : ${notes.join(', ')}';
+        '--- RÉSULTATS DE L\'ANALYSE TECHNIQUE ---\n'
+        'Tonalité détectée : ${key.isEmpty ? "Inconnue" : key}\n'
+        'Tempo (BPM) : ${bpm == 0 ? "Non détecté" : bpm}\n'
+        'Précision harmonique : ${harmony?.keySignature ?? "N/A"}\n'
+        'Énergie audio : ${audio?.energy?.toStringAsFixed(2) ?? "N/A"}\n'
+        'Danseabilité : ${audio?.danceability?.toStringAsFixed(2) ?? "N/A"}\n'
+        'Progression d\'accords complète : ${chords.join(' → ')}\n'
+        'Séquence de notes principales : ${notes.take(50).join(', ')}${notes.length > 50 ? "..." : ""}\n'
+        '--- CONTRÔLE ---\n'
+        'Tu es un expert musicologue. Analyse ces données pour donner des conseils avancés sur la structure, l\'interprétation et la théorie derrière ce morceau.';
   }
 }
