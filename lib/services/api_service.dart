@@ -10,13 +10,13 @@ class ApiService {
   // Pour iOS ou PC, utiliser http://localhost:8000
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.0.30:8000', 
+    defaultValue: 'http://192.168.1.102:8000',
   );
 
   static final _dio = Dio(BaseOptions(
     baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 120),
-    receiveTimeout: const Duration(seconds: 300), // L'analyse peut être longue (Whisper, IA)
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 120),
     headers: {'Accept': 'application/json'},
   ))..interceptors.add(LogInterceptor(
       requestHeader: true,

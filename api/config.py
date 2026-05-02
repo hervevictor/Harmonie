@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        str_strip_whitespace = True  # Supprime les espaces accidentels dans .env
 
 @lru_cache()
 def get_settings() -> Settings:

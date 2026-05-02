@@ -568,6 +568,40 @@ const List<Course> kCourses = [
     ],
   ),
 
+  Course(
+    id: 'piano_sight_reading',
+    instrumentId: 'piano',
+    level: CourseLevel.beginner,
+    emoji: '🎼',
+    title: 'Lire une partition',
+    description: 'Déchiffre les clés de Sol et de Fa — la base de la musique classique et pop.',
+    sections: [
+      CourseSection(
+        id: 'piano_read_1',
+        number: 1,
+        title: 'La portée et la clé de Sol',
+        content:
+            'La partition est le guide du pianiste. Pour le piano, on utilise deux clés : Sol et Fa.\n\n'
+            'La main droite joue généralement en clé de Sol. Les 5 lignes se lisent de bas en haut. '
+            'Notes sur les lignes : Mi Sol Si Ré Fa.\n'
+            'Notes dans les interlignes : Fa La Do Mi.\n\n'
+            'Le Do central se trouve sur une petite ligne supplémentaire en bas de la clé de Sol.',
+        keyPoints: [
+          '5 lignes, 4 interlignes',
+          'Clé de Sol = main droite',
+          'Do central sur ligne supplémentaire',
+          'Rythme : noires, blanches, rondes',
+        ],
+        exercises: [
+          'Identifie 10 notes au hasard sur une partition en clé de Sol.',
+          'Joue la mélodie de "Frère Jacques" en lisant les notes sur papier.',
+        ],
+        aiExercisePrompt:
+            'Je débute la lecture de partition en clé de Sol au piano. Donne-moi des exercices visuels pour ne plus confondre les notes sur les lignes et interlignes.',
+      ),
+    ],
+  ),
+
   // ── PIANO — JUNIOR ───────────────────────────────────────────────────────
   Course(
     id: 'piano_chords',
@@ -728,6 +762,76 @@ const List<Course> kCourses = [
         aiExercisePrompt:
             'Je maîtrise les accords de 7ème jazz et la progression ii-V-I. '
             'Comment commencer à improviser sur cette progression ? Quelle gamme utiliser, comment penser le phrasé jazz ?',
+      ),
+    ],
+  ),
+
+  // ══ VIOLON ══════════════════════════════════════════════════════════════════
+  Course(
+    id: 'violin_basics',
+    instrumentId: 'violin',
+    level: CourseLevel.beginner,
+    emoji: '🎻',
+    title: 'Les bases du violon',
+    description: 'De la tenue de l\'archet à tes premières notes. Bienvenue dans le monde du violon.',
+    sections: [
+      CourseSection(
+        id: 'violin_basics_1',
+        number: 1,
+        title: 'Tenue du violon et de l\'archet',
+        content:
+            'Le violon est un instrument exigeant mais gratifiant. La tenue est cruciale pour éviter les tensions.\n\n'
+            '1. Le violon se pose sur la clavicule gauche, maintenu par le menton sans serrer exagérément. '
+            'Le bras gauche doit rester souple et le coude légèrement rentré vers le corps.\n\n'
+            '2. L\'archet : Imagine que tu fais un "C" avec ta main. Le pouce se pose contre la hausse, les autres doigts se posent naturellement sur la baguette. '
+            'L\'auriculaire doit être arrondi sur le dessus de la baguette.\n\n'
+            'Pratique la respiration tout en tenant l\'instrument. Tu dois te sentir stable mais décontracté.',
+        keyPoints: [
+          'Violon sur la clavicule gauche',
+          'Archet tenu avec souplesse, auriculaire arrondi',
+          'Dos droit, épaules basses',
+          'Coute gauche ramené vers le centre',
+        ],
+        exercises: [
+          'Tiens le violon pendant 2 minutes sans l\'aide de la main gauche.',
+          'Fais des mouvements de "peinture" avec l\'archet dans le vide pour assouplir le poignet.',
+        ],
+        aiExercisePrompt:
+            'Je débute au violon et je travaille ma tenue d\'archet. Quelles sont les meilleures astuces pour ne pas avoir le bras droit trop rigide ?',
+      ),
+    ],
+  ),
+
+  // ══ VOIX / CHANT ═════════════════════════════════════════════════════════════
+  Course(
+    id: 'voice_basics',
+    instrumentId: 'voice',
+    level: CourseLevel.beginner,
+    emoji: '🎤',
+    title: 'Libérer sa voix',
+    description: 'Respiration, posture et tes premières vocalises pour chanter avec plaisir.',
+    sections: [
+      CourseSection(
+        id: 'voice_basics_1',
+        number: 1,
+        title: 'La respiration diaphragmatique',
+        content:
+            'Bien chanter commence par bien respirer. On oublie la respiration haute (épaules qui montent) pour la respiration abdominale.\n\n'
+            'Imagine que tu remplis un ballon dans ton ventre. Inspire par le nez, laisse ton ventre se gonfler naturellement sans monter les épaules. '
+            'Puis, expire lentement en contrôlant le flux d\'air.\n\n'
+            'Le diaphragme est ton moteur. En le maîtrisant, tu gagnes en puissance, en justesse et en endurance vocale.',
+        keyPoints: [
+          'Respire par le ventre, pas par les épaules',
+          'Le diaphragme contrôle le débit d\'air',
+          'Posture droite pour libérer la colonne d\'air',
+          'Détendre la mâchoire et la langue',
+        ],
+        exercises: [
+          'Inspire sur 4 temps, bloque 4 temps, expire sur 8 temps.',
+          'Fais un "S" long et régulier sur l\'expiration.',
+        ],
+        aiExercisePrompt:
+            'Je travaille ma respiration pour le chant. Peux-tu me donner 5 exercices de respiration spécifiques pour augmenter ma capacité pulmonaire ?',
       ),
     ],
   ),

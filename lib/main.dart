@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
 import 'router.dart';
 import 'services/preferences_service.dart';
+import 'services/history_service.dart';
 
 
 
@@ -27,8 +28,9 @@ Future<void> main() async {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  // Charger les préférences utilisateur
+  // Charger les préférences et l'historique
   await PreferencesService.load();
+  await HistoryService.load();
 
   // Init Supabase
   await Supabase.initialize(

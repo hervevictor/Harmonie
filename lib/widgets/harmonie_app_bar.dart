@@ -27,7 +27,7 @@ class HarmonieAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: showBackButton
           ? Center(
               child: GestureDetector(
-                onTap: () => context.pop(),
+                onTap: () { if (context.canPop()) context.pop(); },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(

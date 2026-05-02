@@ -14,11 +14,6 @@ async def get_scale(
     scale_type: str = "major",
     user: dict = Depends(get_current_user)
 ):
-    """
-    **Gammes supportées** : major, minor, harmonic_minor, melodic_minor,
-    pentatonic_major, pentatonic_minor, blues, dorian, phrygian,
-    lydian, mixolydian, locrian, whole_tone, chromatic
-    """
     return get_scale_notes(tonic, scale_type)
 
 
@@ -38,25 +33,11 @@ async def get_progressions(
     style: str = "pop",
     user: dict = Depends(get_current_user)
 ):
-    """
-    **Styles** : pop, jazz, blues, classical, bossa_nova
-    """
     return suggest_chord_progression(f"{tonic} {scale_type}", style)
 
 
 @router.post("/explain", summary="Explique une progression harmonique (IA)")
 async def explain_harmony_route(payload: dict, user: dict = Depends(get_current_user)):
-    """
-    **Corps** :
-    ```json
-    {
-      "chords": ["Am", "F", "C", "G"],
-      "key": "A minor",
-      "instrument": "guitar",
-      "level": "débutant"
-    }
-    ```
-    """
     return await explain_harmony(
         chords=payload.get("chords", []),
         key_name=payload.get("key", "C major"),
@@ -67,17 +48,6 @@ async def explain_harmony_route(payload: dict, user: dict = Depends(get_current_
 
 @router.post("/generate-melody", summary="Génère une continuation mélodique (IA Magenta)")
 async def generate_melody(payload: dict, user: dict = Depends(get_current_user)):
-    """
-    **Corps** :
-    ```json
-    {
-      "seed_notes": [{"pitch": 60, "start": 0.0, "end": 0.5}],
-      "key": "C major",
-      "num_steps": 64,
-      "temperature": 1.0
-    }
-    ```
-    """
     return await generate_melody_continuation(
         seed_notes=payload.get("seed_notes", []),
         key_name=payload.get("key", "C major"),
@@ -91,12 +61,25 @@ async def chat_with_harmony(payload: dict):
     """
     **PUBLIC** : Chat avec l'assistant musical.
     """
-    from services.ai_pedagogy.claude_harmony_service import _openai, is_groq, SYSTEM_PROMPT_HARMONY
+    from services.ai_pedagogy.claude_harmony_service import _openai, is_groq
+    
+    # SYSTEM PROMPT HYPER-STRICT
+    SYSTEM_PROMPT_CHAT = """Tu es Harmonie, un assistant musical expert et chaleureux. 
+Tu réponds TOUJOURS en français simple, convivial et bien structuré.
+IMPORTANT : 
+- NE RÉPONDS JAMAIS EN FORMAT JSON (pas d'accolades {} ni de guillemets autour du texte).
+- ÉCRIS COMME UN HUMAIN QUI PARLE.
+- Utilise le Markdown pour le gras (**texte**) et les listes.
+
+IMAGES :
+Si on te demande une image, une partition ou une illustration, insère cette URL à la fin :
+https://pollinations.ai/p/[description_courte_anglais]?width=800&height=600&nologo=true
+"""
     
     messages = payload.get("messages", [])
     context = payload.get("analysisContext", "")
     
-    system_prompt = SYSTEM_PROMPT_HARMONY
+    system_prompt = SYSTEM_PROMPT_CHAT
     if context:
         system_prompt += f"\n\nContexte musical actuel :\n{context}"
         
@@ -110,6 +93,17 @@ async def chat_with_harmony(payload: dict):
             messages=full_messages,
             max_tokens=2000
         )
-        return {"content": response.choices[0].message.content}
+        content = response.choices[0].message.content
+        
+        # Nettoyage ultime si l'IA persiste à mettre du JSON (cas rare)
+        if content.startswith('{') and content.endswith('}'):
+            try:
+                import json
+                js = json.loads(content)
+                content = js.get("content", js.get("message", js.get("explanation", content)))
+            except:
+                pass
+                
+        return {"content": content}
     except Exception as e:
-        return {"error": str(e), "content": "Désolé, je ne peux pas répondre pour le moment."}
+        return {"content": "Désolé, je ne peux pas répondre pour le moment. Vérifie ma connexion."}

@@ -295,45 +295,105 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
+    final imageUrl = _getImageUrl(message.content);
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        onLongPress: () {
-          Clipboard.setData(ClipboardData(text: message.content));
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Copié dans le presse-papier'),
-              duration: Duration(seconds: 1),
-              behavior: SnackBarBehavior.floating,
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onLongPress: () {
+              Clipboard.setData(ClipboardData(text: message.content));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Copié dans le presse-papier'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(
+                top: 6,
+                bottom: 2,
+                left: isUser ? 48 : 0,
+                right: isUser ? 0 : 48,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser
+                    ? HarmonieColors.gold.withValues(alpha: 0.15)
+                    : HarmonieColors.surface,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isUser ? 18 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 18),
+                ),
+                border: Border.all(
+                  color: isUser
+                      ? HarmonieColors.gold.withValues(alpha: 0.3)
+                      : const Color(0x12FFFFFF),
+                ),
+              ),
+              child: _MarkdownText(text: message.content, isUser: isUser),
             ),
-          );
-        },
-        child: Container(
-          margin: EdgeInsets.only(
-            top: 6,
-            bottom: 6,
-            left: isUser ? 48 : 0,
-            right: isUser ? 0 : 48,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: isUser
-                ? HarmonieColors.gold.withValues(alpha: 0.15)
-                : HarmonieColors.surface,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(isUser ? 18 : 4),
-              bottomRight: Radius.circular(isUser ? 4 : 18),
-            ),
-            border: Border.all(
-              color: isUser
-                  ? HarmonieColors.gold.withValues(alpha: 0.3)
-                  : const Color(0x12FFFFFF),
-            ),
+          if (imageUrl != null)
+            _ImageMessage(imageUrl: imageUrl),
+        ],
+      ),
+    );
+  }
+
+  String? _getImageUrl(String text) {
+    // Détecter un format markdown d'image ou une URL brute terminant par .png/jpg
+    final reg = RegExp(r'https?://[^\s)]+\.(?:png|jpg|jpeg|webp)');
+    final match = reg.firstMatch(text);
+    return match?.group(0);
+  }
+}
+
+class _ImageMessage extends StatelessWidget {
+  final String imageUrl;
+  const _ImageMessage({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 8),
+      constraints: const BoxConstraints(maxWidth: 300),
+      decoration: BoxDecoration(
+        color: HarmonieColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x12FFFFFF)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Image.network(
+            imageUrl,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Center(child: CircularProgressIndicator(color: HarmonieColors.gold)),
+              );
+            },
           ),
-          child: _MarkdownText(text: message.content, isUser: isUser),
-        ),
+          TextButton.icon(
+            onPressed: () {
+              // Simuler le téléchargement (ouvrir l'URL)
+              // Requiert url_launcher, mais on peut juste afficher un msg pour le moment
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Image prête à être téléchargée !"))
+              );
+            },
+            icon: const Icon(Icons.download_rounded, color: HarmonieColors.gold, size: 18),
+            label: const Text("Télécharger l'image", style: TextStyle(color: HarmonieColors.gold, fontSize: 12)),
+          )
+        ],
       ),
     );
   }
@@ -347,9 +407,12 @@ class _MarkdownText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // On transforme le markdown simple en TextSpans
+    // Nettoyer le texte des URL d'images pour ne pas les afficher en texte brut
+    String cleanText = text.replaceAll(RegExp(r'https?://[^\s)]+\.(?:png|jpg|jpeg|webp)'), '').trim();
+    if (cleanText.isEmpty && !isUser) return const SizedBox.shrink();
+
     final spans = <InlineSpan>[];
-    final lines = text.split('\n');
+    final lines = cleanText.split('\n');
     for (int li = 0; li < lines.length; li++) {
       final line = lines[li];
       if (li > 0) spans.add(const TextSpan(text: '\n'));
@@ -358,7 +421,7 @@ class _MarkdownText extends StatelessWidget {
     return RichText(
       text: TextSpan(
         style: TextStyle(
-          color: isUser ? HarmonieColors.cream : HarmonieColors.cream,
+          color: HarmonieColors.cream,
           fontSize: 14,
           height: 1.5,
           fontWeight: FontWeight.w300,

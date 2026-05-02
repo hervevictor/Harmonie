@@ -42,6 +42,14 @@ class ProgressService {
     await _save();
   }
 
+  static Future<void> completeSection(String courseId, String sectionId) async {
+    await markSection(courseId, sectionId, SectionStatus.completed);
+  }
+
+  static Future<void> uncompleteSection(String courseId, String sectionId) async {
+    await markSection(courseId, sectionId, SectionStatus.notStarted);
+  }
+
   static Future<SectionStatus> getSectionStatus(
       String courseId, String sectionId) async {
     await load();
@@ -57,16 +65,23 @@ class ProgressService {
   static Future<int> completedSections(String courseId, int total) async {
     await load();
     int count = 0;
-    for (var i = 0; i < total; i++) {
-      final v = _data['$courseId:section_$i'];
-      if (v == 'completed') count++;
-    }
-    // Also check by sectionId keys
-    count = 0;
     _data.forEach((key, value) {
-      if (key.startsWith('$courseId:') && value == 'completed') count++;
+      if (key.startsWith('$courseId:') && value == SectionStatus.completed.name) {
+        count++;
+      }
     });
     return count;
+  }
+
+  static Future<List<String>> completedSectionsList(String courseId) async {
+    await load();
+    List<String> list = [];
+    _data.forEach((key, value) {
+      if (key.startsWith('$courseId:') && value == SectionStatus.completed.name) {
+        list.add(key.split(':')[1]);
+      }
+    });
+    return list;
   }
 
   // ── Instrument & level choice ─────────────────────────────────────────────

@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:just_audio/just_audio.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart' as ph;
 
 class AudioService {
   static final AudioPlayer _player = AudioPlayer();
@@ -43,9 +43,12 @@ class AudioService {
   static String? get currentRecordingPath => _currentRecordingPath;
 
   static Future<bool> requestPermissions({bool withCamera = false}) async {
-    final mic = await Permission.microphone.request();
+    if (Platform.isMacOS) {
+      return await _recorder.hasPermission();
+    }
+    final mic = await ph.Permission.microphone.request();
     if (withCamera) {
-      final cam = await Permission.camera.request();
+      final cam = await ph.Permission.camera.request();
       return mic.isGranted && cam.isGranted;
     }
     return mic.isGranted;
@@ -55,13 +58,13 @@ class AudioService {
     final granted = await requestPermissions();
     if (!granted) return null;
 
-    final dir = await getTemporaryDirectory();
+    final dir = await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final path = '${dir.path}/recording_$timestamp.m4a';
 
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.aacLc,  // compatible Android + iOS
+        encoder: AudioEncoder.aacLc,
         sampleRate: 44100,
         numChannels: 1,
         bitRate: 128000,

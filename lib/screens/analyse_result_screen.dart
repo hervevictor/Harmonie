@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../models/music_result.dart';
 import '../models/instrument.dart';
 import '../services/api_service.dart';
+import '../services/history_service.dart';
 import '../utils/note_converter.dart';
 import '../widgets/harmonie_app_bar.dart';
 import '../widgets/notation_toggle.dart';
@@ -30,11 +31,38 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
   String get _key => _result?.audioFeatures?.keySignature ?? 'Inconnue';
   List<String> get _chords => _result?.harmony?.chordProgression ?? [];
   bool get _useFr => ref.watch(settingsProvider);
+  String? get _audioPath =>
+      widget.data['audio_url'] as String? ?? widget.data['localFilePath'] as String?;
 
   @override
   void initState() {
     super.initState();
     _initAudio();
+    if (_result != null) {
+      _isSaved = HistoryService.isSaved(_result!.jobId);
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    final result = _result;
+    if (result == null) return;
+    if (_isSaved) {
+      await HistoryService.removeByJobId(result.jobId);
+      setState(() => _isSaved = false);
+    } else {
+      final filename = (widget.data['localFilePath'] as String?)
+              ?.split(RegExp(r'[/\\]'))
+              .last ??
+          'Enregistrement';
+      await HistoryService.add(
+        title: filename.replaceAll(RegExp(r'\.\w+$'), ''),
+        instrumentId:
+            widget.data['instrumentId'] as String? ?? 'guitar_acoustic',
+        audioPath: _audioPath,
+        result: result,
+      );
+      setState(() => _isSaved = true);
+    }
   }
 
   Future<void> _initAudio() async {
@@ -97,7 +125,7 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: HarmonieColors.surface.withOpacity(0.5),
+                    color: HarmonieColors.surface.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
@@ -135,9 +163,9 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
             actions: [
               const NotationToggle(),
               IconButton(
-                icon: Icon(_isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 
+                icon: Icon(_isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                           color: HarmonieColors.gold),
-                onPressed: () => setState(() => _isSaved = !_isSaved),
+                onPressed: _toggleSave,
               ),
             ],
           ),
@@ -150,13 +178,13 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: result.isPartial
-                      ? Colors.orange.withOpacity(0.1)
-                      : HarmonieColors.gold.withOpacity(0.05),
+                      ? Colors.orange.withValues(alpha: 0.1)
+                      : HarmonieColors.gold.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: result.isPartial
-                        ? Colors.orange.withOpacity(0.3)
-                        : HarmonieColors.gold.withOpacity(0.15),
+                        ? Colors.orange.withValues(alpha: 0.3)
+                        : HarmonieColors.gold.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Column(
@@ -280,7 +308,7 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [HarmonieColors.gold.withOpacity(0.15), Colors.transparent],
+          colors: [HarmonieColors.gold.withValues(alpha: 0.15), Colors.transparent],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -293,9 +321,9 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: HarmonieColors.gold.withOpacity(0.1),
+                color: HarmonieColors.gold.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
-                border: Border.all(color: HarmonieColors.gold.withOpacity(0.2)),
+                border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.2)),
               ),
               child: Text(
                 instr?.emoji ?? '🎸',
@@ -315,9 +343,9 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
       children: _chords.take(4).map((c) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: HarmonieColors.bg.withOpacity(0.5),
+          color: HarmonieColors.bg.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: HarmonieColors.gold.withOpacity(0.2)),
+          border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.2)),
         ),
         child: Text(
           NoteConverter.convertChord(c, _useFr), 
@@ -332,7 +360,7 @@ class _AnalyseResultScreenState extends ConsumerState<AnalyseResultScreen> {
       height: 50,
       width: double.infinity,
       decoration: BoxDecoration(
-        color: HarmonieColors.bg.withOpacity(0.3),
+        color: HarmonieColors.bg.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ClipRRect(
@@ -408,9 +436,15 @@ class _RealAudioPlayerState extends State<_RealAudioPlayer> {
           IconButton(
             icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
             color: widget.ready ? HarmonieColors.gold : HarmonieColors.muted,
-            onPressed: widget.ready ? () {
-              if (isPlaying) widget.player.pause();
-              else widget.player.play();
+            onPressed: widget.ready ? () async {
+              if (isPlaying) {
+                widget.player.pause();
+              } else {
+                if (widget.player.processingState == ProcessingState.completed) {
+                  await widget.player.seek(Duration.zero);
+                }
+                widget.player.play();
+              }
             } : null,
           ),
           const SizedBox(width: 12),
@@ -517,7 +551,7 @@ class _DashboardCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(icon, color: color, size: 20),
@@ -556,7 +590,7 @@ class _AiSummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: HarmonieColors.surface2,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: HarmonieColors.gold.withOpacity(0.2)),
+        border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,7 +636,7 @@ class _SimpleWavePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (notes.isEmpty) return;
     final paint = Paint()
-      ..color = HarmonieColors.gold.withOpacity(0.3)
+      ..color = HarmonieColors.gold.withValues(alpha: 0.3)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 

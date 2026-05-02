@@ -13,6 +13,7 @@ import 'screens/analyse_screen.dart';
 import 'screens/analyse_result_screen.dart';
 import 'screens/partition_screen.dart';
 import 'screens/record_screen.dart';
+import 'screens/history_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/analysis/harmony_detail_screen.dart';
@@ -119,6 +120,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/instruments',
           pageBuilder: (c, s) => _fade(const InstrumentCatalogScreen()),
+        ),
+        GoRoute(
+          path: '/historique',
+          pageBuilder: (c, s) => _fade(const HistoryScreen()),
         ),
       ],
     ),

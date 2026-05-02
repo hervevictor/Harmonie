@@ -64,6 +64,8 @@ class _RecordScreenState extends State<RecordScreen>
   // ── Actions ──────────────────────────────────────────────────────────────
 
   Future<void> _start() async {
+    _timer?.cancel();
+    _ampSub?.cancel();
     final path = await AudioService.startRecording();
     if (path == null) { _showError('Permission micro refusée'); return; }
     setState(() {
@@ -107,22 +109,27 @@ class _RecordScreenState extends State<RecordScreen>
     _ampSub?.cancel();
     final path = await AudioService.stopRecording();
     if (path == null) return;
+    await Future.delayed(const Duration(milliseconds: 600));
     setState(() {
       _phase = _Phase.reviewing;
       _recordingPath = path;
       _amplitude = 0.0;
     });
-    // Charger le fichier dans le player
     try {
       await _player.setFilePath(path);
       if (mounted) setState(() => _playerReady = true);
-    } catch (_) {}
+    } catch (_) {
+      // Le fichier sera envoyé à l'API même si le player local échoue
+    }
   }
 
   Future<void> _restart() async {
+    _timer?.cancel();
+    _timer = null;
+    _ampSub?.cancel();
+    _ampSub = null;
     await _player.stop();
     await AudioService.cancelRecording();
-    // Supprimer le fichier temporaire
     if (_recordingPath != null) {
       try { await File(_recordingPath!).delete(); } catch (_) {}
     }
@@ -144,7 +151,8 @@ class _RecordScreenState extends State<RecordScreen>
       String fileUrl = '';
       try {
         fileUrl = await SupabaseService.uploadFile(
-            file: file, bucket: 'audio', folder: 'recordings');
+            file: file, bucket: 'audio', folder: 'recordings')
+            .timeout(const Duration(seconds: 10));
       } catch (_) {}
 
       // Analyse réelle via ton serveur Python
@@ -489,7 +497,14 @@ class _ReviewPlayerState extends State<_ReviewPlayer> {
   }
 
   Future<void> _toggle() async {
-    if (!widget.ready) return;
+    if (!widget.ready) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Chargement du fichier audio en cours…'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     if (widget.player.playing) {
       await widget.player.pause();
     } else {

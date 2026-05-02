@@ -28,5 +28,7 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Harmonie a besoin du microphone pour enregistrer votre audio.</string>
 </dict>
 </plist>

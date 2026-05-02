@@ -4,13 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../models/instrument.dart';
-import '../widgets/instrument_card.dart';
-import '../widgets/upload_zone.dart';
-import '../widgets/mode_card.dart';
-import '../widgets/session_tile.dart';
 import '../widgets/section_header.dart';
 import '../widgets/notation_dialog.dart';
 import '../services/preferences_service.dart';
+import '../services/history_service.dart';
+import '../models/analysis_entry.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -60,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 margin: const EdgeInsets.only(right: 20),
                 child: CircleAvatar(
-                  backgroundColor: HarmonieColors.gold.withOpacity(0.2),
+                  backgroundColor: HarmonieColors.gold.withValues(alpha: 0.2),
                   radius: 18,
                   child: const Text('HV', style: TextStyle(color: HarmonieColors.gold, fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
@@ -113,8 +111,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.4),
-                          Colors.black.withOpacity(0.1),
+                          Colors.black.withValues(alpha: 0.4),
+                          Colors.black.withValues(alpha: 0.1),
                           HarmonieColors.bg,
                         ],
                       ),
@@ -271,12 +269,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          HarmonieColors.gold.withOpacity(0.1),
+                          HarmonieColors.gold.withValues(alpha: 0.1),
                           HarmonieColors.surface2,
                         ],
                       ),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: HarmonieColors.gold.withOpacity(0.2)),
+                      border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
@@ -318,31 +316,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 SectionHeader(
                   title: 'Reprendre la pratique',
                   actionLabel: 'Tout voir',
-                  onAction: () {},
+                  onAction: () => context.push('/historique'),
                 ),
                 const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: const [
-                      SessionTile(
-                        emoji: '🎸',
-                        title: 'Wonderwall — Oasis',
-                        subtitle: 'Analyse terminée · il y a 2h',
-                        progress: 1.0,
-                        gradientIndex: 0,
-                      ),
-                      SizedBox(height: 12),
-                      SessionTile(
-                        emoji: '🎹',
-                        title: 'Clair de Lune — Debussy',
-                        subtitle: 'En cours d\'étude · hier',
-                        progress: 0.45,
-                        gradientIndex: 1,
-                      ),
-                    ],
-                  ),
-                ),
+                _RecentHistory(onTap: (entry) {
+                  context.push('/analyser/resultat', extra: {
+                    'result': entry.result,
+                    'localFilePath': entry.audioPath,
+                    'instrumentId': entry.instrumentId,
+                  });
+                }),
 
                 const SizedBox(height: 100),
               ],
@@ -387,7 +370,7 @@ class _ActionCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -432,7 +415,7 @@ class _InstrumentCircle extends StatelessWidget {
               ),
               boxShadow: isSelected ? [
                 BoxShadow(
-                  color: HarmonieColors.gold.withOpacity(0.3),
+                  color: HarmonieColors.gold.withValues(alpha: 0.3),
                   blurRadius: 15,
                   spreadRadius: 2,
                 )
@@ -512,59 +495,20 @@ class _WideModeCard extends StatelessWidget {
   }
 }
 
-class _IconBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _IconBtn({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x12FFFFFF)),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-}
-
 class _MusicVisualizationPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = HarmonieColors.gold.withOpacity(0.2)
+      ..color = HarmonieColors.gold.withValues(alpha: 0.2)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-
-    for (var i = 0; i < 60; i++) {
-      final angle = (i / 60) * 3.14159 * 2;
-      final length = 50 + (i % 7) * 20.0;
-      final x1 = centerX + (length - 10) * 0.5 * (angle).toDouble(); // Just a placeholder for complex waves
-      // Let's use a simpler radiant pattern
-      final startRadius = 60.0;
-      final endRadius = startRadius + 40 + (i % 5) * 15;
-      
-      final dx = (angle).toDouble();
-      // Actually, let's just do vertical bars at the bottom
-    }
-    
-    // Bottom bars like an equalizer
     final barWidth = size.width / 40;
     for (var i = 0; i < 40; i++) {
       final h = 20 + (i % 11) * 8.0;
       canvas.drawLine(
-        Offset(i * barWidth + barWidth/2, size.height),
-        Offset(i * barWidth + barWidth/2, size.height - h),
+        Offset(i * barWidth + barWidth / 2, size.height),
+        Offset(i * barWidth + barWidth / 2, size.height - h),
         paint,
       );
     }
@@ -572,4 +516,123 @@ class _MusicVisualizationPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
+class _RecentHistory extends StatelessWidget {
+  final void Function(AnalysisEntry) onTap;
+  const _RecentHistory({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = HistoryService.getAll().take(3).toList();
+
+    if (entries.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: HarmonieColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0x0AFFFFFF)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.history_rounded, color: HarmonieColors.muted, size: 20),
+              SizedBox(width: 12),
+              Text(
+                'Aucune analyse sauvegardée',
+                style: TextStyle(color: HarmonieColors.muted, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          for (var i = 0; i < entries.length; i++) ...[
+            if (i > 0) const SizedBox(height: 10),
+            _HistoryTile(entry: entries[i], index: i, onTap: () => onTap(entries[i])),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryTile extends StatelessWidget {
+  final AnalysisEntry entry;
+  final int index;
+  final VoidCallback onTap;
+  const _HistoryTile({required this.entry, required this.index, required this.onTap});
+
+  static const _gradients = [
+    [Color(0xFFD4A843), Color(0xFFB8872E)],
+    [Color(0xFF4CA9AF), Color(0xFF2E7E84)],
+    [Color(0xFFAF4C8A), Color(0xFF7E2E62)],
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final instr = InstrumentCatalog.findById(entry.instrumentId);
+    final af = entry.result.audioFeatures;
+    final gradient = _gradients[index % _gradients.length];
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: HarmonieColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0x0AFFFFFF)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: gradient),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(instr?.emoji ?? '🎵', style: const TextStyle(fontSize: 22)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.title,
+                    style: const TextStyle(
+                      color: HarmonieColors.cream,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    af != null
+                        ? '${af.bpm.toInt()} BPM · ${af.keySignature} · ${entry.result.harmony?.chordProgression.length ?? 0} accords'
+                        : 'Analyse sauvegardée',
+                    style: const TextStyle(color: HarmonieColors.muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: HarmonieColors.muted, size: 12),
+          ],
+        ),
+      ),
+    );
+  }
 }

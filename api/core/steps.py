@@ -123,17 +123,86 @@ async def step_basic_pitch(wav_path: str, tmpdir: str) -> Tuple[Optional[str], l
             duration = round(offset - onset, 3)
             freq = round(440.0 * (2 ** ((midi_val - 69) / 12.0)), 2)
             notes.append(Note(
-                note=midi_to_note_name(midi_val), 
-                midi=midi_val, 
-                onset=onset, 
-                duration=duration, 
+                note=midi_to_note_name(midi_val),
+                midi=midi_val,
+                onset=onset,
+                duration=duration,
                 frequency_hz=freq,
             ))
         logger.info(f"Basic-pitch extracted {len(notes)} notes")
         return midi_path, notes, StepResult(name="basic_pitch", tool="basic-pitch", status="ok", duration_ms=elapsed(), data={"count": len(notes)})
+    except ImportError:
+        logger.warning("basic_pitch not installed, falling back to librosa pyin")
+        return await _step_librosa_pyin_fallback(wav_path, elapsed)
     except Exception as e:
         logger.error(f"Basic-pitch error: {e}")
         return None, [], StepResult(name="basic_pitch", tool="basic-pitch", status="error", duration_ms=elapsed(), error=str(e))
+
+async def _step_librosa_pyin_fallback(wav_path: str, elapsed) -> Tuple[None, list, StepResult]:
+    """Extracts melody notes using librosa pyin when basic_pitch is unavailable."""
+    try:
+        import librosa
+        y, sr = librosa.load(wav_path, sr=22050, mono=True)
+        hop_length = 512
+
+        f0, voiced_flag, _ = librosa.pyin(
+            y,
+            fmin=librosa.note_to_hz('C2'),
+            fmax=librosa.note_to_hz('C7'),
+            sr=sr,
+            hop_length=hop_length,
+        )
+        times = librosa.frames_to_time(np.arange(len(f0)), sr=sr, hop_length=hop_length)
+
+        notes = []
+        current_midi = None
+        current_onset = None
+
+        def _flush(end_time):
+            nonlocal current_midi, current_onset
+            if current_midi is None:
+                return
+            duration = round(end_time - current_onset, 3)
+            if duration >= 0.05:
+                freq = round(440.0 * (2 ** ((current_midi - 69) / 12.0)), 2)
+                notes.append(Note(
+                    note=midi_to_note_name(current_midi),
+                    midi=current_midi,
+                    onset=round(current_onset, 3),
+                    duration=duration,
+                    frequency_hz=freq,
+                ))
+            current_midi = None
+            current_onset = None
+
+        for i, (freq, voiced) in enumerate(zip(f0, voiced_flag)):
+            t = float(times[i])
+            if voiced and freq and freq > 0:
+                midi_val = int(round(librosa.hz_to_midi(freq)))
+                midi_val = max(21, min(108, midi_val))
+                if current_midi is None:
+                    current_midi = midi_val
+                    current_onset = t
+                elif abs(midi_val - current_midi) > 1:
+                    _flush(t)
+                    current_midi = midi_val
+                    current_onset = t
+            else:
+                _flush(t)
+
+        _flush(float(times[-1]) if len(times) > 0 else 0.0)
+
+        logger.info(f"Librosa pyin extracted {len(notes)} notes (fallback)")
+        return None, notes[:300], StepResult(
+            name="basic_pitch", tool="librosa-pyin", status="ok",
+            duration_ms=elapsed(), data={"count": len(notes), "fallback": True},
+        )
+    except Exception as e:
+        logger.error(f"Librosa pyin fallback error: {e}")
+        return None, [], StepResult(
+            name="basic_pitch", tool="librosa-pyin", status="error",
+            duration_ms=elapsed(), error=str(e),
+        )
 
 # --- Music21 Score Building ---
 # Utilise les durées réelles + voicings d'accords spécifiques à l'instrument
