@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/harmonie_app_bar.dart';
@@ -14,6 +15,12 @@ class PartitionDetailScreen extends StatelessWidget {
     this.svgContent,
   });
 
+  void _launchUrl(String? url) {
+    if (url != null && url.isNotEmpty) {
+      launchUrlString(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -24,9 +31,7 @@ class PartitionDetailScreen extends StatelessWidget {
           if (partitionUrl != null)
             IconButton(
               icon: const Icon(Icons.share_rounded, color: HarmonieColors.gold),
-              onPressed: () {
-                // Logique de partage
-              },
+              onPressed: () => _launchUrl(partitionUrl),
             ),
           const SizedBox(width: 8),
         ],
@@ -111,7 +116,7 @@ class PartitionDetailScreen extends StatelessWidget {
           const SizedBox(height: 24),
           if (partitionUrl != null)
             ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () => _launchUrl(partitionUrl),
               icon: const Icon(Icons.download_rounded),
               label: const Text('Télécharger le PDF'),
               style: ElevatedButton.styleFrom(
@@ -138,19 +143,28 @@ class PartitionDetailScreen extends StatelessWidget {
           label: 'Format PDF',
           subtitle: 'Idéal pour l\'impression',
           icon: Icons.picture_as_pdf_rounded,
-          onTap: () {},
+          onTap: () => _launchUrl(partitionUrl),
         ),
         _ExportTile(
           label: 'MusicXML',
           subtitle: 'Ouvrir dans MuseScore ou Sibelius',
           icon: Icons.code_rounded,
-          onTap: () {},
+          onTap: () {
+             // Si on avait l'URL MusicXML
+             if (partitionUrl != null) {
+               _launchUrl(partitionUrl!.replaceAll('.pdf', '.xml'));
+             }
+          },
         ),
         _ExportTile(
           label: 'Fichier MIDI',
           subtitle: 'Importer dans votre DAW',
           icon: Icons.audiotrack_rounded,
-          onTap: () {},
+          onTap: () {
+             if (partitionUrl != null) {
+               _launchUrl(partitionUrl!.replaceAll('.pdf', '.mid'));
+             }
+          },
         ),
       ],
     );

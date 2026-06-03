@@ -99,52 +99,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         opacity: 0.4,
                         child: CustomPaint(
                           painter: _MusicVisualizationPainter(),
+                          size: Size.infinite,
                         ),
                       ),
                     ),
                   ),
                   
-                  // Decorative Gradient Overlay
-                  Container(
+                  // Overlay Gradient
+                  const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.4),
-                          Colors.black.withValues(alpha: 0.1),
-                          HarmonieColors.bg,
-                        ],
+                        colors: [Colors.transparent, HarmonieColors.bg],
                       ),
                     ),
                   ),
 
-                  // Hero Text
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 100, 24, 40),
+                  // Welcome Text
+                  Positioned(
+                    bottom: 40,
+                    left: 20,
+                    right: 20,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: TextStyle(
-                              fontFamily: GoogleFonts.playfairDisplay().fontFamily,
-                              fontSize: 34,
-                              height: 1.1,
-                              color: HarmonieColors.cream,
-                            ),
-                            children: const [
-                              TextSpan(text: 'Écoutez votre '),
-                              TextSpan(
-                                text: 'âme ',
-                                style: TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                  color: HarmonieColors.gold,
-                                ),
-                              ),
-                              TextSpan(text: '\net jouez l\'harmonie.'),
-                            ],
+                        Text(
+                          'Bonjour, Hervé',
+                          style: GoogleFonts.playfairDisplay(
+                            color: HarmonieColors.cream,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -200,6 +185,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 32),
 
+                // ─── Dernière Analyse (Chordify Style) ──────────────────────
+                _buildLastAnalysisSection(context),
+
+                const SizedBox(height: 32),
+
                 // ─── Instruments Switcher ────────────────────────────────────
                 SectionHeader(
                   title: 'Instruments Actifs',
@@ -245,70 +235,65 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     children: [
                       _WideModeCard(
-                        icon: '🎼',
-                        title: 'Transcription de Partitions',
-                        subtitle: 'Importez une photo de partition, l\'IA s\'occupe du reste.',
-                        onTap: () => context.push('/partition'),
+                        icon: '🎓',
+                        title: 'Masterclass Jazz Impro',
+                        subtitle: 'Apprenez les secrets de la substitution tritonique',
+                        onTap: () {},
                       ),
                       const SizedBox(height: 12),
                       _WideModeCard(
-                        icon: '📚',
-                        title: 'Bibliothèque de Théorie',
-                        subtitle: 'Maîtrisez les gammes et les modes avec nos cours.',
-                        onTap: () => context.go('/apprendre'),
+                        icon: '🎸',
+                        title: 'Dictionnaire d\'accords',
+                        subtitle: 'Plus de 2000 positions à découvrir',
+                        onTap: () {},
                       ),
                     ],
                   ),
                 ),
 
-                // ─── Daily Inspiration ──────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          HarmonieColors.gold.withValues(alpha: 0.1),
-                          HarmonieColors.surface2,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Text('💡', style: TextStyle(fontSize: 24)),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Conseil du jour',
-                                style: TextStyle(
-                                  color: HarmonieColors.gold,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              const Text(
-                                'Essayez de pratiquer les gammes pentatoniques pour fluidifier vos solos improvisés.',
-                                style: TextStyle(
-                                  color: HarmonieColors.cream,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                // ─── AI Insights ────────────────────────────────────────────
+                // Padding(
+                //   padding: const EdgeInsets.symmetric(horizontal: 20),
+                //   child: Container(
+                //     padding: const EdgeInsets.all(24),
+                //     decoration: BoxDecoration(
+                //       gradient: LinearGradient(
+                //         colors: [HarmonieColors.gold.withValues(alpha: 0.15), Colors.transparent],
+                //         begin: Alignment.topLeft,
+                //         end: Alignment.bottomRight,
+                //       ),
+                //       borderRadius: BorderRadius.circular(24),
+                //       border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.1)),
+                //     ),
+                //     child: Row(
+                //       children: [
+                //         Expanded(
+                //           child: Column(
+                //             crossAxisAlignment: CrossAxisAlignment.start,
+                //             children: [
+                //               const Row(
+                //                 children: [
+                //                   Icon(Icons.tips_and_updates_rounded, color: HarmonieColors.gold, size: 18),
+                //                   SizedBox(width: 8),
+                //                   Text('ASTUCE DU JOUR', style: TextStyle(color: HarmonieColors.gold, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                //                 ],
+                //               ),
+                //               const SizedBox(height: 4),
+                //               const Text(
+                //                 'Essayez de pratiquer les gammes pentatoniques pour fluidifier vos solos improvisés.',
+                //                 style: TextStyle(
+                //                   color: HarmonieColors.cream,
+                //                   fontSize: 13,
+                //                   height: 1.4,
+                //                 ),
+                //               ),
+                //             ],
+                //           ),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
+                // ),
 
                 const SizedBox(height: 40),
 
@@ -329,6 +314,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 const SizedBox(height: 100),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLastAnalysisSection(BuildContext context) {
+    final entries = HistoryService.getAll();
+    if (entries.isEmpty) return const SizedBox.shrink();
+    
+    final last = entries.first;
+    final chords = last.result.harmony?.chordProgression.take(4).toList() ?? [];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Dernière analyse', 
+            actionLabel: 'Voir tout', 
+            onAction: () => context.push('/historique')
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: () => context.push('/analyser/resultat', extra: {
+              'result': last.result,
+              'localFilePath': last.audioPath,
+              'instrumentId': last.instrumentId,
+            }),
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: HarmonieColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: HarmonieColors.gold.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2), 
+                    blurRadius: 20, 
+                    offset: const Offset(0, 10)
+                  )
+                ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: HarmonieColors.gold.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.music_note_rounded, color: HarmonieColors.gold)
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              last.title, 
+                              style: const TextStyle(
+                                color: HarmonieColors.cream, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 16
+                              )
+                            ),
+                            Text(
+                              '${last.result.audioFeatures?.keySignature ?? "???"} · ${last.result.audioFeatures?.bpm.toInt() ?? 0} BPM', 
+                              style: const TextStyle(color: HarmonieColors.muted, fontSize: 12)
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.play_circle_fill_rounded, color: HarmonieColors.gold, size: 40),
+                    ],
+                  ),
+                  if (chords.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: chords.map((c) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: HarmonieColors.bg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                        ),
+                        child: Text(
+                          c, 
+                          style: const TextStyle(
+                            color: HarmonieColors.gold, 
+                            fontWeight: FontWeight.bold, 
+                            fontSize: 14
+                          )
+                        ),
+                      )).toList(),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],

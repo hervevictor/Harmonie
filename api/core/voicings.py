@@ -382,3 +382,44 @@ def get_voicing_info(instrument_id: str) -> dict:
         "rhythm_patterns_count": len(voicing.rhythm_patterns),
         "available_inversions": voicing.preferred_inversions,
     }
+
+
+def get_chord_chroma_template(root: str, quality: str) -> list:
+    """
+    Génère un vecteur de template Chroma (12 dimensions) pour un accord spécifique.
+    Le vecteur est normalisé pour que sa norme L2 soit égale à 1.0.
+    """
+    root_offset = NOTE_TO_MIDI.get(root, 0)
+    intervals = CHORD_INTERVALS.get(quality, [0, 4, 7])
+    
+    template = [0.0] * 12
+    # Donner plus de poids aux notes importantes de l'accord :
+    # Fondamentale = 1.0, Tierce/Septième/Autre = 0.8, Quinte = 0.6
+    for interval in intervals:
+        pitch_class = (root_offset + interval) % 12
+        if interval == 0:
+            weight = 1.0
+        elif interval in (3, 4, 10, 11, 2, 5): # tierces, septièmes, suspendus
+            weight = 0.8
+        elif interval == 7: # quinte juste
+            weight = 0.6
+        else:
+            weight = 0.7
+        template[pitch_class] = max(template[pitch_class], weight)
+        
+    # Normalisation L2 du vecteur template
+    import math
+    norm = math.sqrt(sum(w**2 for w in template))
+    if norm > 0:
+        template = [w / norm for w in template]
+        
+    return template
+
+
+# Précalculer tous les templates possibles pour optimiser la reconnaissance d'accords en temps réel
+CHORD_TEMPLATES = {
+    (root, quality): get_chord_chroma_template(root, quality)
+    for root in NOTE_TO_MIDI.keys()
+    for quality in CHORD_INTERVALS.keys()
+}
+

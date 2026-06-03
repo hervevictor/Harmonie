@@ -5,11 +5,12 @@ ROUTER UNIFIÉ — Points d'entrée API
 
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from typing import Optional
 
 from core.orchestrator import orchestrator, InputType, MusicResult
+from core.auth import get_optional_user
 
 router = APIRouter(prefix="/api", tags=["Music Analysis"])
 
@@ -53,12 +54,14 @@ async def analyze_auto(
     file: UploadFile = File(...),
     target_key: Optional[str] = Form(None),
     openai_api_key: Optional[str] = Form(None),
+    user: Optional[dict] = Depends(get_optional_user),
 ):
     content = await file.read()
     size_mb = validate_file(file, content)
     input_type = detect_input_type(file.filename or "", file.content_type or "")
     tmp_path = await save_upload(content, file.filename or "upload.tmp")
     try:
+        user_id = user.get("sub") if user else None
         result = await orchestrator.process(
             input_type=input_type,
             file_path=tmp_path,
@@ -67,6 +70,7 @@ async def analyze_auto(
             options={
                 "target_key": target_key,
                 "openai_api_key": openai_api_key or os.getenv("OPENAI_API_KEY", ""),
+                "user_id": user_id,
             }
         )
         return JSONResponse(content=result_to_response(result))
@@ -77,12 +81,14 @@ async def analyze_auto(
 async def analyze_mic(
     file: UploadFile = File(...),
     target_key: Optional[str] = Form(None),
+    user: Optional[dict] = Depends(get_optional_user),
 ):
     """Endpoint dédié pour l'enregistrement microphone."""
     content = await file.read()
     size_mb = validate_file(file, content)
     tmp_path = await save_upload(content, file.filename or "live_recording.wav")
     try:
+        user_id = user.get("sub") if user else None
         result = await orchestrator.process(
             input_type=InputType.MIC,
             file_path=tmp_path,
@@ -90,6 +96,7 @@ async def analyze_mic(
             size_mb=size_mb,
             options={
                 "target_key": target_key,
+                "user_id": user_id,
             }
         )
         return JSONResponse(content=result_to_response(result))

@@ -36,8 +36,12 @@ app.add_middleware(
 
 from routers.analyze_router import router
 from routers.instruments import router as instruments_router
+from routers.harmony import router as harmony_router
+from routers.quiz import router as quiz_router
 app.include_router(router)
 app.include_router(instruments_router)
+app.include_router(harmony_router, prefix="/api/v1")
+app.include_router(quiz_router, prefix="/api/v1")
 
 # Servir les fichiers générés (partitions, etc.)
 app.mount("/exports", StaticFiles(directory="exports"), name="exports")

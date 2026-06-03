@@ -198,7 +198,7 @@ class _LearnScreenState extends State<LearnScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     letterSpacing: 1.5,
-                    color: HarmonieColors.gold.withOpacity(0.7),
+                    color: HarmonieColors.gold.withValues(alpha: 0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),

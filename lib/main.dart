@@ -8,6 +8,7 @@ import 'theme/app_theme.dart';
 import 'router.dart';
 import 'services/preferences_service.dart';
 import 'services/history_service.dart';
+import 'config/secrets.dart';
 
 
 
@@ -35,9 +36,9 @@ Future<void> main() async {
   // Init Supabase
   await Supabase.initialize(
     url: const String.fromEnvironment('SUPABASE_URL',
-        defaultValue: 'https://YOUR_PROJECT.supabase.co'),
+        defaultValue: Secrets.supabaseUrl),
     anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY',
-        defaultValue: 'YOUR_ANON_KEY'),
+        defaultValue: Secrets.supabaseAnonKey),
   );
 
   runApp(

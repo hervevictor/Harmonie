@@ -116,6 +116,8 @@ class AudioFeatures {
   final double durationSeconds;
   final double? energy;
   final double? danceability;
+  final String timeSignature;      // e.g. "4/4", "3/4", "6/8"
+  final List<double> beatTimes;    // timestamp (seconds) of each detected beat
 
   AudioFeatures({
     required this.bpm,
@@ -125,6 +127,8 @@ class AudioFeatures {
     required this.durationSeconds,
     this.energy,
     this.danceability,
+    this.timeSignature = '4/4',
+    this.beatTimes = const [],
   });
 
   factory AudioFeatures.fromJson(Map<String, dynamic> json) {
@@ -136,6 +140,10 @@ class AudioFeatures {
       durationSeconds: (json['duration_seconds'] ?? 0).toDouble(),
       energy: json['energy']?.toDouble(),
       danceability: json['danceability']?.toDouble(),
+      timeSignature: json['time_signature'] ?? '4/4',
+      beatTimes: (json['beat_times'] as List? ?? [])
+          .map((e) => (e as num).toDouble())
+          .toList(),
     );
   }
 
@@ -146,6 +154,8 @@ class AudioFeatures {
       'mode': mode,
       'key_signature': keySignature,
       'duration_seconds': durationSeconds,
+      'time_signature': timeSignature,
+      'beat_times': beatTimes,
     };
   }
 }
@@ -156,6 +166,7 @@ class Note {
   final double onset;
   final double duration;
   final double? frequencyHz;
+  final double amplitude; // Force de la note (0.0 à 1.0)
 
   Note({
     required this.note,
@@ -163,6 +174,7 @@ class Note {
     required this.onset,
     required this.duration,
     this.frequencyHz,
+    this.amplitude = 1.0,
   });
 
   factory Note.fromJson(Map<String, dynamic> json) {
@@ -172,6 +184,7 @@ class Note {
       onset: (json['onset'] ?? 0).toDouble(),
       duration: (json['duration'] ?? 0).toDouble(),
       frequencyHz: json['frequency_hz']?.toDouble(),
+      amplitude: (json['amplitude'] ?? 1.0).toDouble(),
     );
   }
 
@@ -181,6 +194,8 @@ class Note {
       'midi': midi,
       'onset': onset,
       'duration': duration,
+      'frequency_hz': frequencyHz,
+      'amplitude': amplitude,
     };
   }
 }
@@ -189,14 +204,21 @@ class ChordEvent {
   final String chord;
   final double start;
   final double end;
+  final double confidence;
 
-  ChordEvent({required this.chord, required this.start, required this.end});
+  ChordEvent({
+    required this.chord, 
+    required this.start, 
+    required this.end,
+    this.confidence = 1.0,
+  });
 
   factory ChordEvent.fromJson(Map<String, dynamic> json) {
     return ChordEvent(
       chord: json['chord'] ?? '',
       start: (json['start'] ?? 0).toDouble(),
       end: (json['end'] ?? 0).toDouble(),
+      confidence: (json['confidence'] ?? 1.0).toDouble(),
     );
   }
 
@@ -204,6 +226,7 @@ class ChordEvent {
     'chord': chord,
     'start': start,
     'end': end,
+    'confidence': confidence,
   };
 }
 

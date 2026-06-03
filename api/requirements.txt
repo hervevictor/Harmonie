@@ -1,13 +1,48 @@
+# ═══════════════════════════════════════════════════
+# HARMONIE API — Requirements complet et vérifié
+# ═══════════════════════════════════════════════════
+
+# --- Serveur Web ---
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
+
+# --- Configuration & Environnement ---
+pydantic-settings
+python-dotenv
+
+# --- Supabase (BDD + Storage) ---
+supabase
+
+# --- Authentification JWT ---
+PyJWT
+
+# --- HTTP Client async ---
+httpx<0.28.0
+openai
+anthropic
+
+# --- Analyse Audio ---
 librosa
-basic-pitch
-onnxruntime
-music21
-openai-whisper
-opencv-python
 numpy
-httpx
+soundfile
+
+# --- Extraction de Notes (MIDI) ---
+# basic-pitch gère sa propre version d'onnxruntime
+basic-pitch
+
+# --- Partition Musicale ---
+music21
+
+# --- Transcription Vocale ---
+openai-whisper
+
+# --- Vision / Traitement d'Images ---
+opencv-python-headless
+
+# --- File Type Detection ---
 python-magic-bin; sys_platform == 'win32'
 python-magic; sys_platform != 'win32'
+
+# --- Upload fichiers async ---
+aiofiles

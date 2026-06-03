@@ -112,8 +112,80 @@ async def evaluate_answers(
     """
     Évalue les réponses d'un élève et génère un feedback personnalisé.
     """
-    # ... (reste du code identique, appelle _generate_feedback)
-    pass # J'ai préservé la structure originale pour ne pas surcharger
+    questions = quiz.get("questions", [])
+    results: List[Dict[str, Any]] = []
+    total_score = 0
+    max_score = 0
+    wrong_topics: List[str] = []
+
+    def normalize_value(value: Any) -> str:
+        if value is None:
+            return ""
+        return str(value).strip().lower()
+
+    for question in questions:
+        question_id = question.get("id")
+        points = int(question.get("points", 1) or 1)
+        max_score += points
+
+        answer_record = next(
+            (item for item in user_answers if item.get("question_id") == question_id),
+            {}
+        )
+
+        question_type = question.get("type", "qcm")
+        user_choice = answer_record.get("answer_index")
+        user_value = answer_record.get("answer_value")
+        correct_answer = question.get("correct_answer")
+
+        is_correct = False
+        user_answer_text = ""
+
+        if question_type == "qcm":
+            options = question.get("options", []) or []
+            if isinstance(user_choice, int) and 0 <= user_choice < len(options):
+                user_answer_text = options[user_choice]
+                is_correct = user_choice == question.get("correct_index")
+        elif question_type == "vrai_faux":
+            user_answer_text = str(user_value)
+            expected_bool = str(correct_answer).strip().lower() in ["true", "vrai", "1", "oui"]
+            provided_bool = str(user_value).strip().lower() in ["true", "vrai", "1", "oui"]
+            is_correct = expected_bool == provided_bool
+        else:
+            user_answer_text = normalize_value(user_value)
+            expected_text = normalize_value(correct_answer)
+            is_correct = user_answer_text == expected_text
+
+        if not is_correct and question.get("category"):
+            wrong_topics.append(question.get("category"))
+        elif not is_correct:
+            wrong_topics.append(question.get("topic", question.get("question", "Réponse incorrecte")))
+
+        if is_correct:
+            total_score += points
+
+        results.append({
+            "question_id": question_id,
+            "type": question_type,
+            "question": question.get("question"),
+            "user_answer": user_answer_text,
+            "correct_answer": correct_answer,
+            "is_correct": is_correct,
+            "points_awarded": points if is_correct else 0,
+            "max_points": points,
+            "explanation": question.get("explanation", ""),
+        })
+
+    percentage = int(round((total_score / max_score) * 100)) if max_score else 0
+    feedback = await _generate_feedback(percentage, quiz, wrong_topics)
+
+    return {
+        "total_score": total_score,
+        "max_score": max_score,
+        "percentage": percentage,
+        "results": results,
+        "feedback": feedback,
+    }
 
 
 async def _generate_feedback(percentage: float, quiz: Dict, wrong_topics: List[str]) -> str:

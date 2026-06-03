@@ -163,5 +163,178 @@ class SupabaseService {
       ids.map((id) => {'user_id': userId, 'instrument_id': id}).toList(),
     );
   }
+
+  // ─── LEARNING SYSTEM ─────────────────────────────────────────────────────
+
+  /// Manually insert a learning signal. In practice, use
+  /// [LearningIntelligenceService.trackSignal()] which is fire-and-forget
+  /// and never throws.
+  static Future<void> saveLearningSignal({
+    required String signalType,
+    String? instrumentId,
+    String? topic,
+    String? level,
+    String? courseId,
+    String? sectionId,
+    double? score,
+    int? durationMs,
+    bool? success,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+
+    await _client.from('learning_signals').insert({
+      'user_id':       userId,
+      'signal_type':   signalType,
+      'instrument_id': instrumentId,
+      'topic':         topic,
+      'level':         level,
+      'course_id':     courseId,
+      'section_id':    sectionId,
+      'score':         score,
+      'duration_ms':   durationMs,
+      'success':       success,
+      'metadata':      metadata,
+    });
+  }
+
+  /// Fetch recent learning signals for the current user.
+  static Future<List<Map<String, dynamic>>> getRecentSignals({
+    int limit = 50,
+    String? signalType,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) return [];
+
+    var query = _client
+        .from('learning_signals')
+        .select()
+        .eq('user_id', userId);
+
+    if (signalType != null) {
+      query = query.eq('signal_type', signalType);
+    }
+
+    final result = await query
+        .order('created_at', ascending: false)
+        .limit(limit);
+
+    return List<Map<String, dynamic>>.from(result);
+  }
+
+  /// Fetch the current user's computed learning profile.
+  static Future<Map<String, dynamic>?> getLearningProfile() async {
+    final userId = currentUser?.id;
+    if (userId == null) return null;
+
+    return await _client
+        .from('user_learning_profiles')
+        .select()
+        .eq('user_id', userId)
+        .maybeSingle();
+  }
+
+  /// Call the Supabase RPC to get the full AI personalization context.
+  static Future<Map<String, dynamic>?> getAiLearningContext() async {
+    final userId = currentUser?.id;
+    if (userId == null) return null;
+
+    final result = await _client.rpc(
+      'fn_get_user_ai_context',
+      params: {'p_user_id': userId},
+    );
+    if (result == null) return null;
+    return result as Map<String, dynamic>;
+  }
+
+  /// Get personalized course recommendations via RPC.
+  static Future<List<Map<String, dynamic>>> getRecommendedCourses({
+    required String instrumentId,
+    required String level,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) return [];
+
+    final result = await _client.rpc(
+      'fn_get_recommended_courses',
+      params: {
+        'p_user_id':    userId,
+        'p_instrument': instrumentId,
+        'p_level':      level,
+      },
+    );
+    if (result == null) return [];
+    return List<Map<String, dynamic>>.from(result as List);
+  }
+
+  /// Save or update the AI conversation memory for the current user.
+  static Future<void> saveConversationMemory({
+    required String summary,
+    required List<String> keyFacts,
+    String? instrumentId,
+    String mood = 'neutral',
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) return;
+
+    final existing = await _client
+        .from('ai_conversation_memory')
+        .select('id, session_count')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (existing != null) {
+      await _client
+          .from('ai_conversation_memory')
+          .update({
+            'summary':       summary,
+            'key_facts':     keyFacts,
+            'mood':          mood,
+            'session_count': (existing['session_count'] as int? ?? 0) + 1,
+            'updated_at':    DateTime.now().toIso8601String(),
+          })
+          .eq('id', existing['id'] as String);
+    } else {
+      await _client.from('ai_conversation_memory').insert({
+        'user_id':       userId,
+        'instrument_id': instrumentId,
+        'summary':       summary,
+        'key_facts':     keyFacts,
+        'mood':          mood,
+      });
+    }
+  }
+
+  /// Fetch the most recent AI conversation memory for the current user.
+  static Future<Map<String, dynamic>?> getConversationMemory() async {
+    final userId = currentUser?.id;
+    if (userId == null) return null;
+
+    return await _client
+        .from('ai_conversation_memory')
+        .select()
+        .eq('user_id', userId)
+        .order('updated_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+  }
+
+  /// Fetch global learning insights for an instrument and level.
+  /// Useful for showing aggregate stats ("85% des guitaristes débutants
+  /// ont du mal avec X") in the learn screen.
+  static Future<List<Map<String, dynamic>>> getGlobalInsights({
+    required String instrumentId,
+    required String level,
+  }) async {
+    return List<Map<String, dynamic>>.from(
+      await _client
+          .from('global_learning_insights')
+          .select()
+          .eq('instrument_id', instrumentId)
+          .eq('level', level)
+          .order('difficulty_score', ascending: true),
+    );
+  }
 }
 

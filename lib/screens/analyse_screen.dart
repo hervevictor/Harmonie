@@ -383,21 +383,25 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
     });
 
     try {
-      // Upload vers Supabase Storage (optionnel — on ignore l'erreur)
+      // Upload vers Supabase Storage (optionnel — seulement si connecté et avec un timeout de protection)
       String fileUrl = '';
-      try {
-        final bucket = _selectedFileType == 'audio'
-            ? 'audio'
-            : _selectedFileType == 'video'
-                ? 'videos'
-                : 'partitions';
-        fileUrl = await SupabaseService.uploadFile(
-          file: _selectedFile!,
-          bucket: bucket,
-        );
-      } catch (_) {}
+      if (SupabaseService.isLoggedIn) {
+        try {
+          final bucket = _selectedFileType == 'audio'
+              ? 'audio'
+              : _selectedFileType == 'video'
+                  ? 'videos'
+                  : 'partitions';
+          fileUrl = await SupabaseService.uploadFile(
+            file: _selectedFile!,
+            bucket: bucket,
+          ).timeout(const Duration(seconds: 12));
+        } catch (e) {
+          debugPrint('⚠️ Supabase Storage upload skipped/failed: $e');
+        }
+      }
 
-      // 1. Appel du backend Python Unifié
+      // 1. Appel du backend Python Unifié (Cœur de l'application)
       MusicResult result;
       try {
         result = await ApiService.analyze(
@@ -408,16 +412,20 @@ class _AnalyseScreenState extends State<AnalyseScreen> {
         throw Exception("Serveur injoignable sur ${ApiService.baseUrl} (Détail: $e).");
       }
 
-      // Sauvegarde de la session (optionnelle)
-      try {
-        await SupabaseService.saveSession(
-          title: _selectedFileName ?? 'Analyse',
-          instrumentId: _selectedInstrumentId,
-          fileUrl: fileUrl,
-          fileType: _selectedFileType,
-          analysisResult: {}, // À adapter en fonction de votre schéma Supabase
-        );
-      } catch (_) {}
+      // Sauvegarde de la session (optionnelle — seulement si connecté et avec un timeout de protection)
+      if (SupabaseService.isLoggedIn && fileUrl.isNotEmpty) {
+        try {
+          await SupabaseService.saveSession(
+            title: _selectedFileName ?? 'Analyse',
+            instrumentId: _selectedInstrumentId,
+            fileUrl: fileUrl,
+            fileType: _selectedFileType,
+            analysisResult: result.toJson(),
+          ).timeout(const Duration(seconds: 8));
+        } catch (e) {
+          debugPrint('⚠️ Supabase saveSession skipped/failed: $e');
+        }
+      }
 
       if (mounted) {
         setState(() => _isAnalysing = false);

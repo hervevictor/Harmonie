@@ -388,10 +388,6 @@ class PianoRollPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintNote = Paint()..color = HarmonieColors.gold.withOpacity(0.4);
-    final paintActiveNote = Paint()
-      ..color = HarmonieColors.gold
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
     final paintGrid = Paint()..color = Colors.white.withOpacity(0.02)..strokeWidth = 0.5;
     final paintPlayhead = Paint()..color = Colors.red.withOpacity(0.6)..strokeWidth = 1.5;
     final paintKey = Paint()..color = HarmonieColors.surface;
@@ -416,27 +412,35 @@ class PianoRollPainter extends CustomPainter {
 
     // Notes
     for (final note in notes) {
+      // Filtrer les notes trop faibles (bruit de fond)
+      if (note.amplitude < 0.05) continue;
+
       final x = keyboardWidth + (note.onset * 100);
       final w = note.duration * 100;
       final y = (88 - (note.midi - 21)) * keyHeight;
       
       final isActive = activeMidis.contains(note.midi);
       
+      // L'opacité de base dépend de l'amplitude détectée
+      final baseOpacity = (note.amplitude * 0.8).clamp(0.1, 0.9);
+
       if (isActive) {
-        // Drawing note with glow
+        // Drawing active note with stronger glow
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(x, y + 1, w, keyHeight - 2),
             const Radius.circular(2),
           ),
-          Paint()..color = HarmonieColors.gold,
+          Paint()..color = HarmonieColors.gold.withOpacity(baseOpacity),
         );
         canvas.drawRRect(
           RRect.fromRectAndRadius(
             Rect.fromLTWH(x, y + 1, w, keyHeight - 2),
             const Radius.circular(2),
           ),
-          paintActiveNote,
+          Paint()
+            ..color = HarmonieColors.gold
+            ..maskFilter = MaskFilter.blur(BlurStyle.outer, 4.0 * note.amplitude),
         );
       } else {
         canvas.drawRRect(
@@ -444,7 +448,7 @@ class PianoRollPainter extends CustomPainter {
             Rect.fromLTWH(x, y + 1, w, keyHeight - 2),
             const Radius.circular(2),
           ),
-          paintNote,
+          Paint()..color = HarmonieColors.gold.withOpacity(baseOpacity * 0.5),
         );
       }
     }
@@ -560,7 +564,7 @@ class _NotesDetailList extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${note.onset.toStringAsFixed(2)}s | ${note.duration.toStringAsFixed(2)}s',
+                      '${note.onset.toStringAsFixed(2)}s | ${note.duration.toStringAsFixed(2)}s | Conf: ${(note.amplitude * 100).toInt()}%',
                       style: const TextStyle(color: HarmonieColors.muted, fontSize: 10),
                     ),
                   ],

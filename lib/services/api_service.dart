@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import '../models/music_result.dart';
 
 class ApiService {
@@ -10,7 +11,7 @@ class ApiService {
   // Pour iOS ou PC, utiliser http://localhost:8000
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.1.102:8000',
+    defaultValue: 'http://10.3.3.50:8000', 
   );
 
   static final _dio = Dio(BaseOptions(
@@ -18,7 +19,19 @@ class ApiService {
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 120),
     headers: {'Accept': 'application/json'},
-  ))..interceptors.add(LogInterceptor(
+  ))
+    ..interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        try {
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            options.headers['Authorization'] = 'Bearer ${session.accessToken}';
+          }
+        } catch (_) {}
+        return handler.next(options);
+      },
+    ))
+    ..interceptors.add(LogInterceptor(
       requestHeader: true,
       requestBody: true,
       responseHeader: true,
@@ -75,6 +88,50 @@ class ApiService {
   static Future<MusicResult> getJobStatus(String jobId) async {
     final response = await _dio.get('/api/jobs/$jobId');
     return MusicResult.fromJson(response.data);
+  }
+
+  /// Génère un quiz d'évaluation via l'API IA
+  static Future<Map<String, dynamic>> generateQuiz({
+    required String instrument,
+    required String topic,
+    required String level,
+    int numQuestions = 5,
+    String? analysisId,
+  }) async {
+    final response = await _dio.post(
+      '/api/v1/quiz/generate',
+      data: {
+        'instrument': instrument,
+        'topic': topic,
+        'level': level,
+        'num_questions': numQuestions,
+        if (analysisId != null) 'analysis_id': analysisId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(response.data as Map);
+    }
+    throw Exception('Erreur génération quiz: ${response.statusMessage}');
+  }
+
+  /// Évalue les réponses du quiz et retourne le score + feedback IA
+  static Future<Map<String, dynamic>> evaluateQuiz({
+    required Map<String, dynamic> quiz,
+    required List<Map<String, dynamic>> answers,
+  }) async {
+    final response = await _dio.post(
+      '/api/v1/quiz/evaluate',
+      data: {
+        'quiz': quiz,
+        'answers': answers,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(response.data as Map);
+    }
+    throw Exception('Erreur évaluation quiz: ${response.statusMessage}');
   }
 
   /// VÉRIFICATION SANTÉ

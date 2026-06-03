@@ -64,8 +64,55 @@ async def step_librosa_analyze(wav_path: str) -> Tuple[Optional[AudioFeatures], 
     try:
         import librosa
         y, sr = librosa.load(wav_path, sr=44100, mono=True)
+        duration = float(librosa.get_duration(y=y, sr=sr))
+
+        # ── Tempo & Beats ──────────────────────────────────────────────────────
         tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
         beat_times = librosa.frames_to_time(beat_frames, sr=sr).tolist()
+
+        # Convert tempo to scalar float safely (handles array vs scalar returned by different librosa versions)
+        if isinstance(tempo, np.ndarray):
+            tempo_float = float(tempo.item(0)) if tempo.size > 0 else 120.0
+        elif isinstance(tempo, (list, tuple)):
+            tempo_float = float(tempo[0]) if len(tempo) > 0 else 120.0
+        else:
+            tempo_float = float(tempo)
+
+        # ── Time Signature detection ───────────────────────────────────────────
+        # Strategy: analyse the inter-beat interval distribution and the
+        # beat strength periodicity to discriminate 2, 3 or 4 beats per measure.
+        time_signature = "4/4"  # safe default
+        try:
+            # Use librosa's beat plp (predominant local pulse) for meter analysis
+            pulse = librosa.beat.plp(y=y, sr=sr)
+            # Compute autocorrelation of the pulse to find periodicity
+            pulse_ac = np.correlate(pulse, pulse, mode='full')
+            pulse_ac = pulse_ac[len(pulse_ac)//2:]  # keep positive lags
+
+            hop = 512
+            frames_per_beat = sr / (tempo_float * hop) if tempo_float > 0 else 43
+
+            # Check strength at 2, 3, 4 beat multiples
+            def _ac_score(n_beats):
+                lag = int(round(frames_per_beat * n_beats))
+                if lag < len(pulse_ac):
+                    return float(pulse_ac[lag])
+                return 0.0
+
+            scores = {
+                "2/4": _ac_score(2),
+                "3/4": _ac_score(3),
+                "4/4": _ac_score(4),
+                "6/8": _ac_score(6),
+            }
+            # Bias 4/4 slightly (most common)
+            scores["4/4"] *= 1.15
+            time_signature = max(scores, key=scores.get)
+            logger.info(f"Time signature scores: {scores} → {time_signature}")
+        except Exception as ts_err:
+            logger.warning(f"Time signature detection failed: {ts_err}, defaulting to 4/4")
+
+        # ── Key & Chroma ───────────────────────────────────────────────────────
         chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
         chroma_mean = chroma.mean(axis=1).tolist()
         note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -73,27 +120,29 @@ async def step_librosa_analyze(wav_path: str) -> Tuple[Optional[AudioFeatures], 
         key_index = int(np.argmax(chroma_mean))
         estimated_key = note_names[key_index]
 
-        # Détection majeur/mineur via le profil chroma (Krumhansl-Kessler)
         major_profile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
         minor_profile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
-        
-        # Corrélation avec les profils majeur et mineur
         major_corr = float(np.corrcoef(np.roll(major_profile, key_index), chroma_mean)[0, 1])
         minor_corr = float(np.corrcoef(np.roll(minor_profile, key_index), chroma_mean)[0, 1])
         mode = "Major" if major_corr >= minor_corr else "Minor"
         mode_suffix = "" if mode == "Major" else "m"
-        
+
         af = AudioFeatures(
-            bpm=round(float(tempo), 1),
+            bpm=round(tempo_float, 1),
             key=estimated_key,
             mode=mode,
             key_signature=f"{estimated_key}{mode_suffix}",
-            duration_seconds=round(float(librosa.get_duration(y=y, sr=sr)), 2),
+            duration_seconds=round(duration, 2),
             chroma_profile=chroma_profile,
-            beat_times=beat_times[:20],
+            beat_times=beat_times[:100],   # up to 100 beats for waveform
+            time_signature=time_signature,
         )
-        logger.info(f"Librosa result: BPM={af.bpm}, Key={af.key_signature}, Mode={af.mode}")
-        return af, StepResult(name="librosa_analyze", tool="librosa", status="ok", duration_ms=elapsed(), data={"bpm": af.bpm, "key": af.key_signature})
+        logger.info(f"Librosa result: BPM={af.bpm}, Key={af.key_signature}, Mode={af.mode}, TS={time_signature}")
+        return af, StepResult(
+            name="librosa_analyze", tool="librosa", status="ok",
+            duration_ms=elapsed(),
+            data={"bpm": af.bpm, "key": af.key_signature, "time_signature": time_signature}
+        )
     except Exception as e:
         logger.error(f"Librosa error: {e}")
         return None, StepResult(name="librosa_analyze", tool="librosa", status="error", duration_ms=elapsed(), error=str(e))
@@ -112,7 +161,14 @@ async def step_basic_pitch(wav_path: str, tmpdir: str) -> Tuple[Optional[str], l
         from basic_pitch.inference import predict
         from basic_pitch import ICASSP_2022_MODEL_PATH
         logger.info(f"Starting basic-pitch on {wav_path}")
-        _, midi_data, note_events = predict(wav_path, ICASSP_2022_MODEL_PATH)
+        # Ajustement des seuils pour plus de robustesse (concordance avec le volume réel)
+        _, midi_data, note_events = predict(
+            wav_path, 
+            ICASSP_2022_MODEL_PATH,
+            onset_threshold=0.6,    # Évite les fausses attaques (bruits de fond)
+            frame_threshold=0.4,    # Filtre les notes trop faibles/incertaines
+            minimum_note_length=150 # Supprime les micro-notes parasites
+        )
         midi_path = os.path.join(tmpdir, "output.mid")
         midi_data.write(midi_path)
         notes = []
@@ -121,6 +177,7 @@ async def step_basic_pitch(wav_path: str, tmpdir: str) -> Tuple[Optional[str], l
             onset = round(float(ne[0]), 3)
             offset = round(float(ne[1]), 3)
             duration = round(offset - onset, 3)
+            amplitude = round(float(ne[3]), 3) # Capturer l'intensité
             freq = round(440.0 * (2 ** ((midi_val - 69) / 12.0)), 2)
             notes.append(Note(
                 note=midi_to_note_name(midi_val),
@@ -128,6 +185,7 @@ async def step_basic_pitch(wav_path: str, tmpdir: str) -> Tuple[Optional[str], l
                 onset=onset,
                 duration=duration,
                 frequency_hz=freq,
+                amplitude=amplitude,
             ))
         logger.info(f"Basic-pitch extracted {len(notes)} notes")
         return midi_path, notes, StepResult(name="basic_pitch", tool="basic-pitch", status="ok", duration_ms=elapsed(), data={"count": len(notes)})
@@ -287,21 +345,53 @@ async def step_music21_build_score(
         
         melody_part.append(meter.TimeSignature('4/4'))
         
-        # Conversion des notes avec durées réelles
+        # Conversion des notes avec durées réelles, filtrage du bruit et regroupement polyphonique (chords)
         seconds_per_beat = 60.0 / bpm if bpm > 0 else 0.5
         
-        for n in notes[:200]:
-            if n.midi > 0:
-                try:
-                    m21_note = note.Note(n.midi)
-                    quarter_length = n.duration / seconds_per_beat if seconds_per_beat > 0 else 1.0
-                    quarter_length = max(0.25, min(quarter_length, 8.0))
-                    m21_note.quarterLength = round(quarter_length * 4) / 4
-                    m21_note.offset = n.onset / seconds_per_beat
-                    melody_part.append(m21_note)
-                except Exception as ne:
-                    logger.warning(f"Music21: Failed to add note {n.midi}: {ne}")
+        # 1. Filtrer les notes trop courtes (bruit de fond)
+        filtered_notes = [n for n in notes if n.duration >= 0.12 and n.midi > 0]
         
+        # 2. Regrouper les notes débutant à la même double-croche
+        groups = {}
+        for n in filtered_notes[:300]:
+            # Calculer l'offset et la durée en temps (beats)
+            offset = n.onset / seconds_per_beat
+            ql = n.duration / seconds_per_beat
+            
+            # Quantification à la double-croche la plus proche (0.25 temps)
+            quantized_offset = round(offset * 4) / 4
+            quantized_duration = round(ql * 4) / 4
+            
+            if quantized_duration <= 0:
+                quantized_duration = 0.25
+            if quantized_duration > 8.0:
+                quantized_duration = 8.0
+                
+            if quantized_offset not in groups:
+                groups[quantized_offset] = []
+            groups[quantized_offset].append((n.midi, quantized_duration))
+            
+        # 3. Insérer les notes et accords regroupés dans la mélodie
+        for offset, note_list in sorted(groups.items()):
+            # Filtrer les doublons de hauteur de note à cet offset
+            unique_midis = list({midi for midi, _ in note_list})
+            # La durée choisie est le maximum des durées du groupe pour une bonne tenue de note
+            max_duration = max(dur for _, dur in note_list)
+            
+            try:
+                if len(unique_midis) == 1:
+                    m21_note = note.Note(unique_midis[0])
+                    m21_note.quarterLength = max_duration
+                    melody_part.insert(offset, m21_note)
+                elif len(unique_midis) > 1:
+                    m21_c = m21_chord.Chord(unique_midis)
+                    m21_c.quarterLength = max_duration
+                    melody_part.insert(offset, m21_c)
+            except Exception as ne:
+                logger.warning(f"Music21: Failed to add polyphonic element at offset {offset}: {ne}")
+        
+        # Quantification finale du flux pour s'assurer que music21 accepte l'export
+        melody_part = melody_part.quantize((4, 3), processOffsets=True, processDurations=True, inPlace=False)
         s.append(melody_part)
         
         # ═══ Partie 2 : ACCORDS (accompagnement) ═══
@@ -348,24 +438,36 @@ async def step_music21_build_score(
                         if pattern_beat >= beats_per_chord: break
                         actual_duration = min(duration, beats_per_chord - pattern_beat)
                         
+                        # Quantification de la durée de l'accord
+                        actual_duration = round(actual_duration * 4) / 4
+                        if actual_duration <= 0: actual_duration = 0.25
+                        
+                        # Calcul et quantification de l'offset
+                        off = current_beat + pattern_beat
+                        off = round(off * 4) / 4
+
                         if len(chord_midis) == 1:
                             m21_n = note.Note(chord_midis[0])
                             m21_n.quarterLength = actual_duration
-                            m21_n.offset = current_beat + pattern_beat
-                            chord_part.append(m21_n)
+                            chord_part.insert(off, m21_n)
                         else:
                             m21_c = m21_chord.Chord(chord_midis)
                             m21_c.quarterLength = actual_duration
-                            m21_c.offset = current_beat + pattern_beat
-                            chord_part.append(m21_c)
+                            chord_part.insert(off, m21_c)
                         pattern_beat += duration
                 except Exception as ce:
                     logger.warning(f"Music21: Failed to add chord {chord_name}: {ce}")
                 
                 current_beat += beats_per_chord
             
+            # Quantification et structuration en mesures
+            chord_part = chord_part.quantize((4, 3), processOffsets=True, processDurations=True, inPlace=False)
+            chord_part.makeMeasures(inPlace=True)
             s.append(chord_part)
             logger.info(f"Music21: Added {len(chords)} chords")
+        
+        # Structurer la mélodie aussi
+        s.parts[0].makeMeasures(inPlace=True)
         
         xml_path = os.path.join(tmpdir, "score.musicxml")
         s.write('musicxml', fp=xml_path)
@@ -387,14 +489,22 @@ async def step_musescore_render(xml_path: str, tmpdir: str) -> Tuple[Optional[st
     pdf_path = os.path.join(tmpdir, "score.pdf")
     svg_path = os.path.join(tmpdir, "score.svg")
     
-    # Chemins probables de MuseScore sur Windows (v4 et v3)
+    # Chemins probables de MuseScore sur Windows, Linux et macOS
     mscore_paths = [
         "mscore4", 
         "mscore",
+        # Windows
         r"C:\Program Files\MuseScore 4\bin\MuseScore4.exe",
         r"C:\Program Files\MuseScore 4\bin\mscore.exe",
         r"C:\Program Files\MuseScore 3\bin\MuseScore3.exe",
         r"C:\Program Files\MuseScore 3\bin\mscore.exe",
+        # macOS
+        "/Applications/MuseScore 4.app/Contents/MacOS/mscore",
+        "/Applications/MuseScore 3.app/Contents/MacOS/mscore",
+        # Linux (chemins absolus typiques si non trouvé dans le PATH)
+        "/usr/bin/mscore4",
+        "/usr/bin/mscore",
+        "/usr/local/bin/mscore",
     ]
     
     mscore_exe = None
@@ -449,6 +559,8 @@ async def step_chord_recognition(wav_path: str) -> Tuple[Optional[HarmonyResult]
     elapsed = _timer()
     try:
         import librosa
+        from core.voicings import CHORD_TEMPLATES
+        
         y, sr = librosa.load(wav_path, sr=22050, mono=True)
         chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
         
@@ -480,10 +592,8 @@ async def step_chord_recognition(wav_path: str) -> Tuple[Optional[HarmonyResult]
             segments = np.array_split(chroma, max(4, chroma.shape[1] // 50), axis=1)
             seg_times = np.linspace(0, librosa.get_duration(y=y, sr=sr), len(segments) + 1)
         else:
-            # Regrouper par mesures de 4 beats
-            measure_frames = beat_frames[::4]  # Chaque 4ème beat
-            if len(measure_frames) < 2:
-                measure_frames = beat_frames[::2]  # Fallback: chaque 2 beats
+            # Regrouper par temps (beats) pour une précision maximale
+            measure_frames = beat_frames
             
             segments = []
             seg_times = librosa.frames_to_time(measure_frames, sr=sr).tolist()
@@ -495,39 +605,37 @@ async def step_chord_recognition(wav_path: str) -> Tuple[Optional[HarmonyResult]
                 if start < end:
                     segments.append(chroma[:, start:end])
         
+        last_chord = None
         for idx, seg in enumerate(segments):
             if seg.size == 0: 
                 continue
             seg_mean = seg.mean(axis=1)
-            root_idx = int(np.argmax(seg_mean))
-            root = note_names[root_idx]
             
-            # Détection de la qualité de l'accord (maj/min/dim/aug/7)
-            third_major = seg_mean[(root_idx + 4) % 12]
-            third_minor = seg_mean[(root_idx + 3) % 12]
-            fifth_perf = seg_mean[(root_idx + 7) % 12]
-            seventh_min = seg_mean[(root_idx + 10) % 12]
-            seventh_maj = seg_mean[(root_idx + 11) % 12]
-            
-            # Seuil basé sur la fondamentale
-            threshold = seg_mean[root_idx] * 0.3
-            
-            if third_minor > third_major and third_minor > threshold:
-                if seventh_min > threshold:
-                    quality = "m7"
-                else:
-                    quality = "m"
-            elif third_major > threshold:
-                if seventh_min > threshold:
-                    quality = "7"
-                elif seventh_maj > threshold:
-                    quality = "maj7"
-                else:
-                    quality = ""
+            # Normaliser L2 le vecteur chroma du segment
+            seg_norm = np.linalg.norm(seg_mean)
+            if seg_norm > 0:
+                seg_mean_norm = seg_mean / seg_norm
             else:
-                quality = "5"  # Power chord
+                seg_mean_norm = seg_mean
+                
+            best_chord = "C"
+            best_score = -1.0
             
-            chord_name = f"{root}{quality}"
+            # Algorithme de Template Matching (similarité cosinus)
+            for (root, quality), template in CHORD_TEMPLATES.items():
+                score = float(np.dot(seg_mean_norm, template))
+                
+                # Biais pour stabiliser les transitions et éviter le sautillement d'accords
+                if last_chord == f"{root}{quality}":
+                    score += 0.08
+                    
+                if score > best_score:
+                    best_score = score
+                    best_chord = f"{root}{quality}"
+            
+            last_chord = best_chord
+            chord_name = best_chord
+            confidence = min(max(best_score, 0.0), 1.0)
             
             # Ajouter à la liste unique pour l'affichage statique
             if not chords or chords[-1] != chord_name:
@@ -539,6 +647,7 @@ async def step_chord_recognition(wav_path: str) -> Tuple[Optional[HarmonyResult]
                     "chord": chord_name,
                     "start": round(seg_times[idx], 2),
                     "end": round(seg_times[idx + 1], 2),
+                    "confidence": round(float(confidence), 2)
                 })
 
         harmony = HarmonyResult(
@@ -548,7 +657,7 @@ async def step_chord_recognition(wav_path: str) -> Tuple[Optional[HarmonyResult]
             chords_timeline=chord_timeline,
             total_chords=len(chords),
         )
-        logger.info(f"Chords extracted: key={key_sig}, chords={chords}")
+        logger.info(f"Chords extracted (advanced templates): key={key_sig}, chords={chords}")
         return harmony, StepResult(name="chord_recognition", tool="librosa", status="ok", duration_ms=elapsed(), data={"key": key_sig, "chords": chords})
     except Exception as e:
         logger.error(f"Chord recognition error: {e}")

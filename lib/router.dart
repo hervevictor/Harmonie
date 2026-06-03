@@ -19,6 +19,10 @@ import 'screens/signup_screen.dart';
 import 'screens/analysis/harmony_detail_screen.dart';
 import 'screens/analysis/melody_detail_screen.dart';
 import 'screens/analysis/partition_detail_screen.dart';
+import 'screens/course_detail_screen.dart';
+import 'screens/quiz_screen.dart';
+import 'data/course_catalog.dart';
+import 'models/course_model.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 final _shellKey = GlobalKey<NavigatorState>();
@@ -89,6 +93,29 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/apprendre',
           pageBuilder: (c, s) => _fade(const LearnScreen()),
+          routes: [
+            GoRoute(
+              path: 'quiz',
+              pageBuilder: (c, s) {
+                final extra = s.extra as Map<String, dynamic>?;
+                return _fade(QuizScreen(
+                  level: extra?['level'] as CourseLevel? ?? CourseLevel.beginner,
+                  instrumentId: extra?['instrumentId'] as String? ?? 'guitar_acoustic',
+                ));
+              },
+            ),
+            GoRoute(
+              path: 'cours/:courseId',
+              pageBuilder: (c, s) {
+                final courseId = s.pathParameters['courseId'];
+                final course = kCourses.firstWhere(
+                  (course) => course.id == courseId,
+                  orElse: () => kCourses.first,
+                );
+                return _fade(CourseDetailScreen(course: course));
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/profil',

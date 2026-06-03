@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/course_model.dart';
+import 'learning_intelligence_service.dart';
 
 class ProgressService {
   static Map<String, String> _data = {};
@@ -36,14 +37,36 @@ class ProgressService {
   // ── Section progress ───────────────────────────────────────────────────────
 
   static Future<void> markSection(
-      String courseId, String sectionId, SectionStatus status) async {
+      String courseId, String sectionId, SectionStatus status,
+      {String? instrumentId, String? topic, String? level, int? durationMs}) async {
     await load();
     _data['$courseId:$sectionId'] = status.name;
     await _save();
   }
 
-  static Future<void> completeSection(String courseId, String sectionId) async {
+  /// Mark a section as completed and emit a learning_signal to Supabase.
+  /// Optionally pass [instrumentId], [topic], [level], and [durationMs]
+  /// to enrich the analytics data.
+  static Future<void> completeSection(
+    String courseId,
+    String sectionId, {
+    String? instrumentId,
+    String? topic,
+    String? level,
+    int durationMs = 0,
+  }) async {
     await markSection(courseId, sectionId, SectionStatus.completed);
+    // Emit signal for continuous learning pipeline
+    LearningIntelligenceService.trackSignal(
+      type:         LearningSignalType.sectionCompleted,
+      courseId:     courseId,
+      sectionId:    sectionId,
+      instrumentId: instrumentId,
+      topic:        topic,
+      level:        level,
+      durationMs:   durationMs,
+      success:      true,
+    );
   }
 
   static Future<void> uncompleteSection(String courseId, String sectionId) async {

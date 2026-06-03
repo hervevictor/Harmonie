@@ -6,6 +6,7 @@ import 'package:mime/mime.dart';
 import '../config/secrets.dart';
 import '../models/music_result.dart';
 import 'api_service.dart';
+import 'learning_intelligence_service.dart';
 
 class AiMessage {
   final String role; // 'user' | 'assistant'
@@ -29,20 +30,33 @@ class AiService {
 
   // ── Chat ──────────────────────────────────────────────────────────────────
 
+  /// Send a chat message to the backend AI endpoint.
+  ///
+  /// [learningContext] is loaded from [LearningIntelligenceService.getAiContext()]
+  /// before calling this method. When provided, a personalized system block is
+  /// prepended so Claude/Gemini knows the learner's profile, weak topics and
+  /// past conversation memory.
   static Future<String> chat({
     required List<AiMessage> messages,
     String? analysisContext,
+    UserAiContext? learningContext,
   }) async {
+    // Build enriched system block combining analysis + learning profile
+    final systemBlock = _buildSystemBlock(
+      analysisContext: analysisContext,
+      learningContext: learningContext,
+    );
+
     final body = jsonEncode({
-      'messages': messages.map((m) => m.toJson()).toList(),
-      'analysisContext': analysisContext,
+      'messages':        messages.map((m) => m.toJson()).toList(),
+      'analysisContext': systemBlock,
     });
 
     final response = await http.post(
       Uri.parse(_baseUrl),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept':       'application/json',
       },
       body: body,
     );
@@ -54,7 +68,35 @@ class AiService {
       throw HttpException(errMsg);
     }
 
+    // Track that a chat message was sent (fire-and-forget)
+    LearningIntelligenceService.trackSignal(
+      type:         LearningSignalType.aiChatMessage,
+      instrumentId: learningContext?.primaryInstrument,
+      level:        learningContext?.currentLevel,
+    );
+
     return (data['content'] as String?) ?? 'Désolé, je ne peux pas répondre.';
+  }
+
+  /// Builds the composite system block that is sent to the AI backend.
+  /// Combines the technical analysis context with the personalized learner profile.
+  static String _buildSystemBlock({
+    String? analysisContext,
+    UserAiContext? learningContext,
+  }) {
+    final parts = <String>[];
+
+    // 1. Learner profile block (personalization)
+    if (learningContext != null) {
+      parts.add(learningContext.toAiSystemBlock());
+    }
+
+    // 2. Technical music analysis context
+    if (analysisContext != null && analysisContext.isNotEmpty) {
+      parts.add(analysisContext);
+    }
+
+    return parts.join('\n\n');
   }
 
   // ── Analyse fichier via Claude ────────────────────────────────────────────
